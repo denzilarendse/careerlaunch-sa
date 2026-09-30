@@ -1,24 +1,10 @@
 const result=document.querySelector('#searchResult');document.querySelector('#demoSearch')?.addEventListener('click',()=>{const goal=document.querySelector('#goal').value;result.textContent=`${goal} selected. Live matching will use verified server-side sources and your approved profile data.`});document.querySelector('#startBtn')?.addEventListener('click',()=>{document.querySelector('#startResult').textContent='CareerLaunch foundation is ready. Authentication and document workflows connect through protected backend services.'});if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))}
 
+function authConfig(){const config=window.CAREERLAUNCH_CONFIG;if(!config?.SUPABASE_URL||!config?.SUPABASE_PUBLISHABLE_KEY)throw new Error('Account service is temporarily unavailable.');return config}
+async function authRequest(path,body){const config=authConfig();const response=await fetch(`${config.SUPABASE_URL}/auth/v1/${path}`,{method:'POST',headers:{'Content-Type':'application/json','apikey':config.SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data?.msg||data?.message||data?.error_description||`Account request failed (${response.status})`);return data}
+
 const signupForm=document.querySelector('#signupForm');
-signupForm?.addEventListener('submit',async(event)=>{
-  event.preventDefault();
-  const email=document.querySelector('#signupEmail');
-  const password=document.querySelector('#signupPassword');
-  const confirm=document.querySelector('#signupPasswordConfirm');
-  const output=document.querySelector('#signupResult');
-  const submit=signupForm.querySelector('button[type="submit"]');
-  if(!email?.checkValidity()){output.textContent='Enter a valid email address to continue.';email?.focus();return;}
-  if(!password?.checkValidity()){output.textContent='Use a password of at least 8 characters.';password?.focus();return;}
-  if(password.value!==confirm?.value){output.textContent='The passwords do not match.';confirm?.focus();return;}
-  const config=window.CAREERLAUNCH_CONFIG;
-  if(!config?.SUPABASE_URL||!config?.SUPABASE_PUBLISHABLE_KEY){output.textContent='Account service is temporarily unavailable.';return;}
-  submit.disabled=true;output.textContent='Creating your CareerLaunch account…';
-  try{
-    const response=await fetch(`${config.SUPABASE_URL}/auth/v1/signup`,{method:'POST',headers:{'Content-Type':'application/json','apikey':config.SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({email:email.value.trim(),password:password.value})});
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(data?.msg||data?.message||`Account request failed (${response.status})`);
-    output.textContent='Account created. If email confirmation is enabled, confirm your email, then sign in with your email and password.';
-    signupForm.reset();
-  }catch(error){console.error('CareerLaunch signup failed',error);output.textContent=error?.message||'We could not create your account right now. Please try again.';}finally{submit.disabled=false;}
-});
+signupForm?.addEventListener('submit',async(event)=>{event.preventDefault();const email=document.querySelector('#signupEmail');const password=document.querySelector('#signupPassword');const confirm=document.querySelector('#signupPasswordConfirm');const output=document.querySelector('#signupResult');const submit=signupForm.querySelector('button[type="submit"]');if(!email?.checkValidity()){output.textContent='Enter a valid email address to continue.';email?.focus();return}if(!password?.checkValidity()){output.textContent='Use a password of at least 8 characters.';password?.focus();return}if(password.value!==confirm?.value){output.textContent='The passwords do not match.';confirm?.focus();return}submit.disabled=true;output.textContent='Creating your CareerLaunch account…';try{const data=await authRequest('signup',{email:email.value.trim(),password:password.value});if(data?.access_token){output.textContent='Account created. Email confirmation is not currently enforced by the authentication service; this must be corrected before release.'}else{output.textContent='Account created. We sent a confirmation email. Confirm your email address, then use Sign in.'}signupForm.reset()}catch(error){console.error('CareerLaunch signup failed',error);output.textContent=error?.message||'We could not create your account right now. Please try again.'}finally{submit.disabled=false}});
+
+const signinForm=document.querySelector('#signinForm');
+signinForm?.addEventListener('submit',async(event)=>{event.preventDefault();const email=document.querySelector('#signinEmail');const password=document.querySelector('#signinPassword');const output=document.querySelector('#signinResult');const submit=signinForm.querySelector('button[type="submit"]');if(!email?.checkValidity()){output.textContent='Enter your email address.';email?.focus();return}if(!password?.checkValidity()){output.textContent='Enter your password.';password?.focus();return}submit.disabled=true;output.textContent='Signing in…';try{const data=await authRequest('token?grant_type=password',{email:email.value.trim(),password:password.value});if(!data?.access_token)throw new Error('Sign in did not return a valid session.');sessionStorage.setItem('careerlaunch_session',JSON.stringify({access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(Number(data.expires_in)||3600)*1000,user:data.user||null}));output.textContent='Signed in successfully. Welcome to CareerLaunch SA.';signinForm.reset()}catch(error){console.error('CareerLaunch sign in failed',error);output.textContent=error?.message||'Sign in failed. Confirm your email address and check your password.'}finally{submit.disabled=false}});
