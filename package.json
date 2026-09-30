@@ -10,5 +10,5 @@
     "check": "node --check src/main.js && node --check public/sw.js"
   },
   "dependencies": {"@capacitor/core": "^7.4.3"},
-  "devDependencies": {"@capacitor/android": "^7.4.3", "@capacitor/cli": "^7.4.3", "vite": "^7.1.7"}
+  "devDependencies": {"@capacitor/android": "^7.4.3", "@capacitor/cli": "^7.4.3", "typescript": "^5.9.3", "vite": "^7.1.7"}
 }
