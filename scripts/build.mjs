@@ -1,0 +1,10 @@
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+const root=process.cwd(),dist=join(root,'dist');
+await rm(dist,{recursive:true,force:true});
+await mkdir(join(dist,'src'),{recursive:true});
+await cp(join(root,'src'),join(dist,'src'),{recursive:true});
+await cp(join(root,'public'),dist,{recursive:true});
+const html=await readFile(join(root,'index.html'),'utf8');
+await writeFile(join(dist,'index.html'),html);
+console.log('Built CareerLaunch SA static release in dist/');

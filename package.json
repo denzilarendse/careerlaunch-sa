@@ -1,0 +1,14 @@
+{
+  "name": "careerlaunch-sa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/main.js && node --check public/sw.js"
+  },
+  "dependencies": {"@capacitor/core": "^7.4.3"},
+  "devDependencies": {"@capacitor/android": "^7.4.3", "@capacitor/cli": "^7.4.3", "vite": "^7.1.7"}
+}
