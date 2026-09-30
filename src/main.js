@@ -18,7 +18,7 @@ signupForm?.addEventListener('submit',async(event)=>{
     const response=await fetch(`${config.SUPABASE_URL}/auth/v1/signup`,{method:'POST',headers:{'Content-Type':'application/json','apikey':config.SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({email:email.value.trim(),password:password.value})});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data?.msg||data?.message||`Account request failed (${response.status})`);
-    if(data?.access_token){output.textContent='Account created successfully. You are signed in.';}else{output.textContent='Account created. Check your email if confirmation is required, then sign in with your email and password.';}
+    output.textContent='Account created. If email confirmation is enabled, confirm your email, then sign in with your email and password.';
     signupForm.reset();
   }catch(error){console.error('CareerLaunch signup failed',error);output.textContent=error?.message||'We could not create your account right now. Please try again.';}finally{submit.disabled=false;}
 });
