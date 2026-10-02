@@ -425,11 +425,23 @@ Deno.serve(async (req: Request) => {
     opportunity = result.data;
   }
 
-  const documentEvidence = (documentsResult.data ?? []).map((doc: Record<string, unknown>) => ({
+  const extractedDocuments = (documentsResult.data ?? []).map((doc: Record<string, unknown>) => ({
     file_name: doc.file_name,
-    document_type: doc.document_type,
+    document_type: clip(doc.document_type, 120).toLowerCase(),
     extracted_text: clip((doc.metadata as Record<string, unknown> | null)?.extracted_text, 18000),
   })).filter((doc) => doc.extracted_text);
+
+  const candidateDocumentEvidence = extractedDocuments.filter((doc) =>
+    ["cv","certificate","qualification","reference"].includes(doc.document_type)
+  );
+  const vacancyDocumentEvidence = extractedDocuments.filter((doc) => doc.document_type === "vacancy_advert");
+  const formDocumentEvidence = extractedDocuments.filter((doc) => doc.document_type === "application_form");
+
+  if (!vacancyText && vacancyDocumentEvidence.length) {
+    vacancyText = vacancyDocumentEvidence.map((doc) =>
+      `VACANCY DOCUMENT: ${doc.file_name}\n${doc.extracted_text}`
+    ).join("\n\n").slice(0, 24000);
+  }
 
   const evidence = {
     profile: useExistingDetails ? profileResult.data : null,
@@ -437,7 +449,9 @@ Deno.serve(async (req: Request) => {
     education: useExistingDetails ? (educationResult.data ?? []) : [],
     skills: useExistingDetails ? (skillsResult.data ?? []) : [],
     manual_cv: useExistingDetails ? (draftResult.data?.content ?? {}) : {},
-    uploaded_documents: useExistingDetails ? documentEvidence : [],
+    uploaded_documents: useExistingDetails ? candidateDocumentEvidence : [],
+    vacancy_documents: vacancyDocumentEvidence,
+    application_form_documents: formDocumentEvidence,
     selected_opportunity: opportunity,
     pasted_vacancy: vacancyText,
     vacancy_url: vacancyUrl,
@@ -493,7 +507,9 @@ BEHAVIOUR
 - Ask concise questions. Prefer one to three related questions at a time rather than a long questionnaire.
 - If the applicant has no formal work experience, ask about education, projects, volunteering, leadership, practical responsibilities and extracurricular activities without turning them into paid employment.
 - Treat statements the applicant gives in the conversation as applicant-provided evidence, but never infer qualifications, dates, employers, licences, achievements or results that were not supplied.
-- Treat vacancy requirements only as employer requirements.
+- Treat vacancy requirements and vacancy_documents only as employer requirements.
+- Treat application_form_documents as form questions/structure, not facts about the applicant.
+- Do not infer applicant facts from personal documents, generated drafts or unknown/custom document categories.
 - Never promise ATS approval or employment. Use "ATS-friendly".
 - For bursaries, scholarships and learnerships, ask what is needed for a truthful motivational letter.
 - For government applications, help with Z83 completion and completeness checks, but never sign, initial, consent or make a declaration on the applicant's behalf.
@@ -554,7 +570,9 @@ Create a truthful, conventional, ATS-friendly South African CV and application m
 
 NON-NEGOTIABLE TRUTH RULES
 - NEVER invent employers, dates, qualifications, licences, certificates, academic results, achievements, languages, contact details, experience, references, responsibilities or skills.
-- Treat vacancy text and employer requirements only as TARGET REQUIREMENTS, never as candidate evidence.
+- Treat vacancy text, vacancy_documents and employer requirements only as TARGET REQUIREMENTS, never as candidate evidence.
+- Treat application_form_documents only as form structure/questions to complete, never as evidence about the applicant.
+- uploaded_documents contains only applicant-evidence document types selected by CareerLaunch. Do not treat generated CVs, personal/ID documents, vacancy adverts, forms, custom-category files or unknown document types as applicant evidence.
 - Applicant statements in the supplied conversation are applicant-provided evidence. Use them only as stated and do not expand them into unsupported claims.
 - If use_existing_details is false, do not import facts from the saved profile, saved CV, stored experience, education, skills or documents.
 - If a requirement is unsupported by candidate evidence, do not claim it. Put it in warnings and match_notes instead.
