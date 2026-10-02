@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071827">
-  <meta name="description" content="CareerLaunch SA helps jobseekers and matriculants prepare ATS-ready applications and discover opportunities.">
+  <meta name="description" content="CareerLaunch SA helps jobseekers and matriculants prepare truthful ATS-ready applications and discover verified opportunities.">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/src/styles.css">
   <title>CareerLaunch SA</title>
@@ -27,7 +27,7 @@
       <section class="hero">
         <p class="eyebrow">CAREER TOOLS • SOUTH AFRICA</p>
         <h1>Turn potential into a <span>real application.</span></h1>
-        <p>Build professional ATS-ready CVs, tailor applications to vacancies, and prepare for jobs, learnerships, bursaries and scholarships.</p>
+        <p>Build professional ATS-ready CVs, tailor applications to verified vacancies, and prepare for jobs, learnerships, internships, bursaries and scholarships.</p>
         <a class="button" href="#account">Create an application pack</a>
       </section>
 
@@ -35,30 +35,23 @@
         <p class="eyebrow">WHAT CAREERLAUNCH DOES</p>
         <h2>One place. Every step of the application.</h2>
         <div class="grid">
-          <article><h3>Professional CV</h3><p>Create a strong general CV with ATS-friendly formatting.</p></article>
-          <article><h3>Job-specific pack</h3><p>Prepare a tailored CV, cover letter, email and checklist.</p></article>
-          <article><h3>Opportunity finder</h3><p>Track jobs, learnerships, bursaries and scholarships.</p></article>
+          <article><h3>Professional CV</h3><p>Create a truthful ATS-friendly CV from your saved evidence.</p></article>
+          <article><h3>Job-specific pack</h3><p>Prepare a vacancy-specific CV, cover letter, email and checklist without inventing qualifications.</p></article>
+          <article><h3>Verified opportunities</h3><p>Use researched vacancies and funding opportunities with official sources and freshness dates.</p></article>
         </div>
       </section>
 
       <section id="opportunities" class="dark">
-        <p class="eyebrow">OPPORTUNITY TRACKER</p>
-        <h2>Search with purpose.</h2>
-        <label for="goal">What are you looking for?</label>
-        <select id="goal">
-          <option>Job vacancies</option>
-          <option>Government vacancies</option>
-          <option>Learnerships</option>
-          <option>Bursaries & scholarships</option>
-        </select>
-        <button id="demoSearch" class="button">Prepare my search</button>
-        <p id="searchResult" aria-live="polite"></p>
+        <p class="eyebrow">LIVE OPPORTUNITY RESEARCH</p>
+        <h2>Search with evidence.</h2>
+        <p>CareerLaunch keeps source URLs and verification timestamps with researched opportunities so a user can check the official listing before applying.</p>
+        <a class="button" href="#account">Sign in to browse verified opportunities</a>
       </section>
 
       <section id="matric">
         <p class="eyebrow">MATRIC LAUNCHPAD</p>
         <h2>School ends. Your plan begins.</h2>
-        <p>Support for first CVs, entry-level work, learnerships, bursaries, scholarships and study planning.</p>
+        <p>Support for first CVs, entry-level work, learnerships, internships, bursaries, scholarships and study funding.</p>
       </section>
 
       <section id="account">
@@ -90,7 +83,7 @@
             </form>
           </article>
         </div>
-        <p class="test-note">Email confirmation will be restored before production release.</p>
+        <p class="test-note">Email confirmation is intentionally disabled for this controlled live-testing stage and must be restored before public production release.</p>
       </section>
     </div>
 
@@ -109,71 +102,192 @@
         <button type="button" class="app-nav-button" data-view="profile">Profile</button>
         <button type="button" class="app-nav-button" data-view="cv">CV Builder</button>
         <button type="button" class="app-nav-button" data-view="jobs">Opportunities</button>
+        <button type="button" class="app-nav-button" data-view="study">Study & Funding</button>
         <button type="button" class="app-nav-button" data-view="applications">Applications</button>
       </nav>
 
       <div class="app-view active" data-app-view="dashboard">
         <div class="workspace-hero">
-          <p class="eyebrow">START HERE</p>
-          <h2>Your career launchpad is ready.</h2>
-          <p>Complete your profile, build your CV, find an opportunity and prepare an application pack.</p>
+          <p class="eyebrow">LIVE DASHBOARD</p>
+          <h2>Your career launchpad</h2>
+          <p>Live data comes from your protected CareerLaunch profile and the verified opportunity research store.</p>
+        </div>
+        <div class="stats-grid">
+          <article class="stat-card"><span>Profile completeness</span><strong id="statProfile">0%</strong></article>
+          <article class="stat-card"><span>Verified open opportunities</span><strong id="statOpportunities">0</strong></article>
+          <article class="stat-card"><span>Application records</span><strong id="statApplications">0</strong></article>
+          <article class="stat-card"><span>Next known deadline</span><strong id="statDeadline">—</strong></article>
         </div>
         <div class="dashboard-grid">
-          <button class="workspace-card" type="button" data-go="profile"><strong>1. Complete profile</strong><span>Add the details used in your applications.</span></button>
-          <button class="workspace-card" type="button" data-go="cv"><strong>2. Build your CV</strong><span>Create a general or job-specific CV workspace.</span></button>
-          <button class="workspace-card" type="button" data-go="jobs"><strong>3. Find opportunities</strong><span>Jobs, government vacancies, learnerships and bursaries.</span></button>
-          <button class="workspace-card" type="button" data-go="applications"><strong>4. Track applications</strong><span>Keep your application progress in one place.</span></button>
+          <button class="workspace-card" type="button" data-go="profile"><strong>1. Build your evidence profile</strong><span>Save your personal details, education, experience and evidence-backed skills.</span></button>
+          <button class="workspace-card" type="button" data-go="cv"><strong>2. Build a truthful CV</strong><span>Generate an ATS-friendly outline from saved evidence only.</span></button>
+          <button class="workspace-card" type="button" data-go="jobs"><strong>3. Research opportunities</strong><span>Browse current official-source vacancies, internships and learning opportunities.</span></button>
+          <button class="workspace-card" type="button" data-go="applications"><strong>4. Track applications</strong><span>Keep application packs, status and next actions together.</span></button>
         </div>
+        <section class="research-panel" aria-labelledby="researchPulseTitle">
+          <div>
+            <p class="eyebrow">RESEARCH PULSE</p>
+            <h3 id="researchPulseTitle">Recently verified opportunities</h3>
+          </div>
+          <div id="researchPulse" class="compact-list" aria-live="polite">Loading researched opportunities…</div>
+        </section>
       </div>
 
       <div class="app-view" data-app-view="profile" hidden>
-        <p class="eyebrow">PROFILE</p>
-        <h2>Your application details</h2>
-        <form id="profileForm" class="workspace-form">
-          <label for="profileName">Full name</label>
-          <input id="profileName" autocomplete="name">
-          <label for="profilePhone">Phone</label>
-          <input id="profilePhone" autocomplete="tel">
-          <label for="profileLocation">Location</label>
-          <input id="profileLocation" autocomplete="address-level2" placeholder="e.g. Cape Town, Western Cape">
-          <label for="profileGoal">Career goal</label>
-          <input id="profileGoal" placeholder="e.g. Administrative assistant">
-          <button class="button" type="submit">Save profile</button>
-          <p id="profileResult" aria-live="polite"></p>
-        </form>
+        <p class="eyebrow">PROFILE & EVIDENCE</p>
+        <h2>Build the factual record behind every application</h2>
+        <p class="muted">CareerLaunch should tailor only what you actually provide. Missing facts stay missing rather than being invented.</p>
+
+        <div class="two-column">
+          <form id="profileForm" class="workspace-form">
+            <h3>Personal profile</h3>
+            <label for="profileName">Full name</label>
+            <input id="profileName" autocomplete="name" required>
+            <label for="profilePhone">Phone</label>
+            <input id="profilePhone" autocomplete="tel">
+            <label for="profileCity">City / town</label>
+            <input id="profileCity" autocomplete="address-level2" placeholder="Cape Town">
+            <label for="profileProvince">Province</label>
+            <select id="profileProvince">
+              <option value="">Select province</option>
+              <option>Western Cape</option><option>Eastern Cape</option><option>Northern Cape</option>
+              <option>Free State</option><option>Gauteng</option><option>KwaZulu-Natal</option>
+              <option>Limpopo</option><option>Mpumalanga</option><option>North West</option>
+            </select>
+            <label for="profileHeadline">Career goal / headline</label>
+            <input id="profileHeadline" placeholder="e.g. Entry-level administration candidate">
+            <label for="profileSummary">Evidence-based professional summary</label>
+            <textarea id="profileSummary" rows="4" placeholder="Describe your real experience, strengths and goals."></textarea>
+            <label class="checkbox-row"><input id="profileMatriculant" type="checkbox"> I am a matriculant / recent school leaver</label>
+            <button class="button" type="submit">Save profile</button>
+            <p id="profileResult" aria-live="polite"></p>
+          </form>
+
+          <div class="evidence-column">
+            <form id="experienceForm" class="workspace-form compact-form">
+              <h3>Add experience</h3>
+              <label for="experienceEmployer">Employer / organisation</label>
+              <input id="experienceEmployer" required>
+              <label for="experienceTitle">Role / position</label>
+              <input id="experienceTitle" required>
+              <label for="experienceDescription">What you actually did</label>
+              <textarea id="experienceDescription" rows="3"></textarea>
+              <button class="button button-small" type="submit">Add experience</button>
+            </form>
+            <div id="experienceList" class="record-list"></div>
+
+            <form id="educationForm" class="workspace-form compact-form">
+              <h3>Add education</h3>
+              <label for="educationInstitution">Institution / school</label>
+              <input id="educationInstitution" required>
+              <label for="educationQualification">Qualification</label>
+              <input id="educationQualification" required placeholder="e.g. National Senior Certificate">
+              <label for="educationField">Field / subjects</label>
+              <input id="educationField">
+              <button class="button button-small" type="submit">Add education</button>
+            </form>
+            <div id="educationList" class="record-list"></div>
+
+            <form id="skillForm" class="workspace-form compact-form">
+              <h3>Add evidence-backed skill</h3>
+              <label for="skillName">Skill</label>
+              <input id="skillName" required placeholder="e.g. Microsoft Excel">
+              <label for="skillEvidence">Evidence</label>
+              <textarea id="skillEvidence" rows="2" placeholder="Where did you use or demonstrate this skill?"></textarea>
+              <button class="button button-small" type="submit">Add skill</button>
+            </form>
+            <div id="skillList" class="record-list"></div>
+          </div>
+        </div>
       </div>
 
       <div class="app-view" data-app-view="cv" hidden>
-        <p class="eyebrow">CV BUILDER</p>
-        <h2>Prepare your CV workspace</h2>
-        <form id="cvForm" class="workspace-form">
+        <p class="eyebrow">ATS CV BUILDER</p>
+        <h2>Build from verified candidate evidence</h2>
+        <div class="research-note">
+          <strong>Truth rule:</strong> CareerLaunch uses your saved profile, education, experience and skills. It will not add qualifications, licences, employers or achievements you did not provide.
+        </div>
+        <form id="cvForm" class="workspace-form wide-form">
+          <label for="cvMode">CV mode</label>
+          <select id="cvMode">
+            <option value="general">General professional CV</option>
+            <option value="job">Job-specific CV</option>
+            <option value="matriculant">Matriculant / first-job CV</option>
+          </select>
           <label for="cvTarget">Target role</label>
-          <input id="cvTarget" placeholder="e.g. Receptionist">
-          <label for="cvStrengths">Key strengths or experience</label>
-          <textarea id="cvStrengths" rows="5" placeholder="Add truthful skills, experience or achievements."></textarea>
-          <button class="button" type="submit">Create CV outline</button>
+          <input id="cvTarget" placeholder="e.g. Sales Assistant">
+          <label for="cvExtraEvidence">Extra evidence to include</label>
+          <textarea id="cvExtraEvidence" rows="4" placeholder="Optional truthful achievements, projects, volunteering or responsibilities not yet saved."></textarea>
+          <p id="selectedOpportunityNote" class="status-card" hidden></p>
+          <button class="button" type="submit">Build & save application pack</button>
+          <p id="cvResult" aria-live="polite"></p>
         </form>
-        <div id="cvPreview" class="preview-card" hidden aria-live="polite"></div>
+        <div id="cvPreview" class="document-preview" hidden aria-live="polite"></div>
       </div>
 
       <div class="app-view" data-app-view="jobs" hidden>
-        <p class="eyebrow">OPPORTUNITIES</p>
-        <h2>Choose what you want to find</h2>
-        <div class="dashboard-grid">
-          <button class="workspace-card opportunity-choice" type="button" data-opportunity="Job vacancies"><strong>Job vacancies</strong><span>Private-sector and entry-level opportunities.</span></button>
-          <button class="workspace-card opportunity-choice" type="button" data-opportunity="Government vacancies"><strong>Government vacancies</strong><span>Prepare to use verified official vacancy sources.</span></button>
-          <button class="workspace-card opportunity-choice" type="button" data-opportunity="Learnerships"><strong>Learnerships</strong><span>Training and workplace experience opportunities.</span></button>
-          <button class="workspace-card opportunity-choice" type="button" data-opportunity="Bursaries & scholarships"><strong>Bursaries & scholarships</strong><span>Study funding and education opportunities.</span></button>
+        <p class="eyebrow">VERIFIED OPPORTUNITIES</p>
+        <h2>Live research from official and employer sources</h2>
+        <p class="muted">Every displayed record includes the source and last verification time. Always re-check the official page immediately before submitting.</p>
+        <div class="filter-row">
+          <label>Type
+            <select id="opportunityTypeFilter">
+              <option value="">All</option>
+              <option value="job">Jobs</option>
+              <option value="government_job">Government jobs</option>
+              <option value="internship">Internships</option>
+              <option value="learnership">Learnerships</option>
+              <option value="apprenticeship">Apprenticeships</option>
+              <option value="bursary">Bursaries</option>
+              <option value="scholarship">Scholarships</option>
+              <option value="study">Study</option>
+            </select>
+          </label>
+          <label>Province
+            <select id="opportunityProvinceFilter">
+              <option value="">All</option>
+              <option>Western Cape</option>
+              <option>Eastern Cape</option><option>Northern Cape</option><option>Free State</option>
+              <option>Gauteng</option><option>KwaZulu-Natal</option><option>Limpopo</option>
+              <option>Mpumalanga</option><option>North West</option>
+            </select>
+          </label>
+          <label>Search
+            <input id="opportunitySearch" type="search" placeholder="Role, organisation or location">
+          </label>
         </div>
-        <p id="opportunityResult" class="status-card" aria-live="polite">Select a category to begin.</p>
+        <div id="opportunityStatus" class="status-card" aria-live="polite">Loading verified opportunities…</div>
+        <div id="opportunityList" class="opportunity-list"></div>
+      </div>
+
+      <div class="app-view" data-app-view="study" hidden>
+        <p class="eyebrow">STUDY & FUNDING</p>
+        <h2>Funding and post-school pathways</h2>
+        <p class="muted">Current bursary, scholarship and study-funding records are drawn from the same verified research store as the Opportunities tab.</p>
+        <div id="studyList" class="opportunity-list" aria-live="polite">Loading funding opportunities…</div>
+        <section class="research-panel">
+          <div>
+            <p class="eyebrow">APPLICATION SAFETY</p>
+            <h3>Protect your documents and money</h3>
+          </div>
+          <ul>
+            <li>Use the official source linked on the opportunity card.</li>
+            <li>Do not pay an application fee unless the official provider explicitly requires one.</li>
+            <li>Do not send passwords, PINs or OTPs with an application.</li>
+            <li>Keep reference numbers and submission confirmations for your tracker.</li>
+          </ul>
+        </section>
       </div>
 
       <div class="app-view" data-app-view="applications" hidden>
-        <p class="eyebrow">APPLICATIONS</p>
-        <h2>Your application tracker</h2>
-        <div id="applicationEmpty" class="empty-state">
+        <p class="eyebrow">APPLICATION TRACKER</p>
+        <h2>Your saved application packs</h2>
+        <p class="muted">CareerLaunch records preparation status separately from real-world submission. It will never label an application “submitted” unless you record that action.</p>
+        <div id="applicationStatus" class="status-card" aria-live="polite">Loading your applications…</div>
+        <div id="applicationList" class="application-list"></div>
+        <div id="applicationEmpty" class="empty-state" hidden>
           <strong>No applications tracked yet.</strong>
-          <p>When you prepare an application pack, it will appear here for testing and progress tracking.</p>
+          <p>Choose an opportunity and prepare an application pack to create your first tracker record.</p>
           <button class="button" type="button" data-go="jobs">Find an opportunity</button>
         </div>
       </div>
