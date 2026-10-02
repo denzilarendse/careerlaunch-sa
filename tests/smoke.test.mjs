@@ -134,3 +134,16 @@ test('structured fallback stays truthful when AI provider is unavailable',async(
   assert.ok(js.includes("generation_mode==='structured_fallback'"));
   assert.ok(js.includes('Structured evidence-only CV draft'));
 });
+
+
+test('OpenAI Responses API defaults are server-side and overrideable',async()=>{
+  const edge=await readFile(edgeUrl,'utf8');
+  assert.ok(edge.includes('https://api.openai.com/v1/responses'));
+  assert.ok(edge.includes('gpt-5.6-luna'));
+  assert.ok(edge.includes('CAREERLAUNCH_AI_API_KEY'));
+  assert.ok(edge.includes('CAREERLAUNCH_AI_API_MODEL')===false);
+  assert.ok(edge.includes('CAREERLAUNCH_AI_MODEL'));
+  assert.ok(edge.includes('type: "json_schema"'));
+  assert.ok(edge.includes('extractResponseText'));
+  assert.equal(/CAREERLAUNCH_AI_API_KEY\s*[:=]\s*['"][^'"]+['"]/i.test(edge),false);
+});
