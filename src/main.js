@@ -1487,25 +1487,25 @@ document.querySelector('#generateShortlistCvs')?.addEventListener('click',async 
 });
 
 /* Export */
-function printableHtml(text){
-  return `<!doctype html><html><head><meta charset="utf-8"><title>CareerLaunch CV</title><style>body{font-family:Arial,sans-serif;max-width:820px;margin:40px auto;padding:0 24px;color:#111}pre{font-family:Arial,sans-serif;white-space:pre-wrap;line-height:1.5;font-size:12pt}@media print{body{margin:0;max-width:none}}</style></head><body><pre>${escapeHtml(text)}</pre><script>window.onload=()=>{window.print();}</script></body></html>`;
-}
-
-function escapeHtml(value){
-  return String(value||'').replace(/[&<>"']/g,char=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-  })[char]);
-}
-
-function printPdf(text){
-  const win=window.open('','_blank');
-  if(!win){
-    alert('Allow pop-ups to open the Save as PDF / print screen.');
-    return;
-  }
-  win.document.open();
-  win.document.write(printableHtml(text));
-  win.document.close();
+async function createPdfBlob(text){
+  const module=await import(JSPDF_URL);
+  const doc=new module.jsPDF({unit:'pt',format:'a4'});
+  const margin=48;
+  const usableWidth=doc.internal.pageSize.getWidth()-margin*2;
+  const pageHeight=doc.internal.pageSize.getHeight();
+  const lines=doc.splitTextToSize(String(text||''),usableWidth);
+  let y=margin;
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10.5);
+  lines.forEach(line=>{
+    if(y>pageHeight-margin){
+      doc.addPage();
+      y=margin;
+    }
+    doc.text(line,margin,y);
+    y+=14;
+  });
+  return doc.output('blob');
 }
 
 function xmlEscape(value){
@@ -1514,26 +1514,32 @@ function xmlEscape(value){
   })[char]);
 }
 
-async function downloadDocx(text,fileName='CareerLaunch-CV.docx'){
+async function createDocxBlob(text){
   if(!window.JSZip)throw new Error('DOCX export library has not loaded yet. Check your connection and try again.');
   const zip=new window.JSZip();
-  zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`);
-  zip.folder('_rels').file('.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`);
+  const contentTypes='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    +'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    +'<Default Extension="xml" ContentType="application/xml"/>'
+    +'<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    +'</Types>';
+  const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    +'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+    +'</Relationships>';
+  zip.file('[Content_Types].xml',contentTypes);
+  zip.folder('_rels').file('.rels',rels);
   const paragraphs=String(text||'').split('\n').map(line=>
-    `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r></w:p>`
+    '<w:p><w:r><w:t xml:space="preserve">'+xmlEscape(line)+'</w:t></w:r></w:p>'
   ).join('');
-  zip.folder('word').file('document.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraphs}<w:sectPr/></w:body></w:document>`);
-  const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-  downloadBlob(blob,fileName);
+  const documentXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+    +paragraphs+'<w:sectPr/></w:body></w:document>';
+  zip.folder('word').file('document.xml',documentXml);
+  return zip.generateAsync({
+    type:'blob',
+    mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  });
 }
 
 function downloadBlob(blob,fileName){
@@ -1547,19 +1553,52 @@ function downloadBlob(blob,fileName){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-document.querySelector('#saveManualPdf')?.addEventListener('click',()=>printPdf(state.manualPreviewText||buildManualCvText()));
-document.querySelector('#saveManualDocx')?.addEventListener('click',async()=>{
-  try{ await downloadDocx(state.manualPreviewText||buildManualCvText(),'CareerLaunch-Manual-CV.docx'); }
-  catch(error){ setText('#manualCvResult',error.message); }
-});
-document.querySelector('#saveAiPdf')?.addEventListener('click',()=>{
-  if(state.generatedAi?.cv_markdown)printPdf(state.generatedAi.cv_markdown);
-});
-document.querySelector('#saveAiDocx')?.addEventListener('click',async()=>{
-  if(!state.generatedAi?.cv_markdown)return;
-  try{ await downloadDocx(state.generatedAi.cv_markdown,'CareerLaunch-AI-CV.docx'); }
-  catch(error){ setText('#aiCvResult',error.message); }
-});
+function exportBaseName(prefix){
+  const raw=state.profile?.full_name||valueOrNull('#manualName')||prefix||'CareerLaunch-CV';
+  return String(raw).trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').slice(0,80)||'CareerLaunch-CV';
+}
+
+async function exportCv(text,format,{cloud=false,prefix='CareerLaunch-CV'}={}){
+  const content=String(text||'').trim();
+  if(!content)throw new Error('Build or generate the CV before exporting it.');
+  const blob=format==='pdf'?await createPdfBlob(content):await createDocxBlob(content);
+  const fileName=exportBaseName(prefix)+'.'+format;
+  if(cloud){
+    const mime=format==='pdf'
+      ?'application/pdf'
+      :'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const file=new File([blob],fileName,{type:mime});
+    await uploadCandidateDocument(file,'generated_cv');
+    return fileName+' saved to your private CareerLaunch cloud storage.';
+  }
+  downloadBlob(blob,fileName);
+  return fileName+' saved locally.';
+}
+
+function bindExport(selector,getText,format,cloud,prefix,statusSelector){
+  document.querySelector(selector)?.addEventListener('click',async event=>{
+    const button=event.currentTarget;
+    button.disabled=true;
+    try{
+      const message=await exportCv(getText(),format,{cloud,prefix});
+      if(statusSelector)setText(statusSelector,message);
+    }catch(error){
+      if(statusSelector)setText(statusSelector,error.message||'Export failed.');
+      else alert(error.message||'Export failed.');
+    }finally{
+      button.disabled=false;
+    }
+  });
+}
+
+bindExport('#saveManualPdf',()=>state.manualPreviewText||buildManualCvText(),'pdf',false,'CareerLaunch-Manual-CV','#manualCvResult');
+bindExport('#saveManualDocx',()=>state.manualPreviewText||buildManualCvText(),'docx',false,'CareerLaunch-Manual-CV','#manualCvResult');
+bindExport('#saveManualCloudPdf',()=>state.manualPreviewText||buildManualCvText(),'pdf',true,'CareerLaunch-Manual-CV','#manualCvResult');
+bindExport('#saveManualCloudDocx',()=>state.manualPreviewText||buildManualCvText(),'docx',true,'CareerLaunch-Manual-CV','#manualCvResult');
+bindExport('#saveAiPdf',()=>state.generatedAi?.cv_markdown||'','pdf',false,'CareerLaunch-AI-CV','#aiCvResult');
+bindExport('#saveAiDocx',()=>state.generatedAi?.cv_markdown||'','docx',false,'CareerLaunch-AI-CV','#aiCvResult');
+bindExport('#saveAiCloudPdf',()=>state.generatedAi?.cv_markdown||'','pdf',true,'CareerLaunch-AI-CV','#aiCvResult');
+bindExport('#saveAiCloudDocx',()=>state.generatedAi?.cv_markdown||'','docx',true,'CareerLaunch-AI-CV','#aiCvResult');
 
 /* Applications */
 function renderApplications(){
