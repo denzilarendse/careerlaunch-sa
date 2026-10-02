@@ -1974,6 +1974,28 @@ bindExport('#saveManualCloudDocx',()=>state.manualPreviewText||buildManualCvText
 bindExport('#saveAiPdf',()=>state.generatedAi?.cv_markdown||'','pdf',false,'CareerLaunch-AI-CV','#aiCvResult');
 bindExport('#saveAiDocx',()=>state.generatedAi?.cv_markdown||'','docx',false,'CareerLaunch-AI-CV','#aiCvResult');
 bindExport('#saveAiTxt',()=>state.generatedAi?.cv_markdown||'','txt',false,'CareerLaunch-AI-CV','#aiCvResult');
+
+function buildApplicationPackageText(pack){
+  const sections=[];
+  if(pack?.cv_markdown)sections.push('CURRICULUM VITAE\n\n'+pack.cv_markdown);
+  if(pack?.cover_letter_markdown)sections.push('COVER LETTER\n\n'+pack.cover_letter_markdown);
+  if(pack?.motivation_letter_markdown)sections.push('MOTIVATIONAL LETTER\n\n'+pack.motivation_letter_markdown);
+  if(pack?.form_completion_markdown)sections.push('FORM COMPLETION WORKSHEET\n\n'+pack.form_completion_markdown);
+  if(pack?.email_subject||pack?.email_body){
+    sections.push('APPLICATION EMAIL\n\nSubject: '+(pack.email_subject||'')+'\n\n'+(pack.email_body||''));
+  }
+  if(Array.isArray(pack?.checklist)&&pack.checklist.length){
+    sections.push('APPLICATION CHECKLIST\n\n'+pack.checklist.map((item,index)=>`${index+1}. ${item}`).join('\n'));
+  }
+  if(Array.isArray(pack?.warnings)&&pack.warnings.length){
+    sections.push('REVIEW WARNINGS\n\n'+pack.warnings.map(item=>'- '+item).join('\n'));
+  }
+  return sections.join('\n\n------------------------------\n\n').trim();
+}
+
+bindExport('#saveAiPackagePdf',()=>buildApplicationPackageText(state.generatedAi),'pdf',false,'CareerLaunch-Application-Package','#aiCvResult');
+bindExport('#saveAiPackageDocx',()=>buildApplicationPackageText(state.generatedAi),'docx',false,'CareerLaunch-Application-Package','#aiCvResult');
+bindExport('#saveAiPackageTxt',()=>buildApplicationPackageText(state.generatedAi),'txt',false,'CareerLaunch-Application-Package','#aiCvResult');
 bindExport('#saveAiCloudPdf',()=>state.generatedAi?.cv_markdown||'','pdf',true,'CareerLaunch-AI-CV','#aiCvResult');
 bindExport('#saveAiCloudDocx',()=>state.generatedAi?.cv_markdown||'','docx',true,'CareerLaunch-AI-CV','#aiCvResult');
 
@@ -2067,15 +2089,32 @@ function renderLibrary(){
         make('p',{className:'muted',text:`Created ${formatDateTime(pack.created_at)}`})
       );
       const actions=make('div',{className:'card-actions'});
-      for(const [label,format] of [['CV PDF','pdf'],['CV DOCX','docx'],['CV TXT','txt']]){
+      const exports=[
+        ['Full package PDF','pdf',buildApplicationPackageText(pack)],
+        ['Full package DOCX','docx',buildApplicationPackageText(pack)],
+        ['Full package TXT','txt',buildApplicationPackageText(pack)],
+        ['CV PDF','pdf',pack.cv_markdown||''],
+        ['CV DOCX','docx',pack.cv_markdown||''],
+        ['CV TXT','txt',pack.cv_markdown||'']
+      ];
+      if(pack.cover_letter_markdown){
+        exports.push(['Cover letter PDF','pdf',pack.cover_letter_markdown],['Cover letter DOCX','docx',pack.cover_letter_markdown]);
+      }
+      if(pack.motivation_letter_markdown){
+        exports.push(['Motivation PDF','pdf',pack.motivation_letter_markdown],['Motivation DOCX','docx',pack.motivation_letter_markdown]);
+      }
+      if(pack.form_completion_markdown){
+        exports.push(['Form worksheet PDF','pdf',pack.form_completion_markdown],['Form worksheet DOCX','docx',pack.form_completion_markdown]);
+      }
+      exports.forEach(([label,format,content])=>{
         const button=make('button',{className:'button button-secondary button-small',text:label});
         button.type='button';
         button.addEventListener('click',async()=>{
-          try{await exportCv(pack.cv_markdown||'',format,{prefix:pack.title||'CareerLaunch-CV'});}
+          try{await exportCv(content,format,{prefix:pack.title||'CareerLaunch-Application'});}
           catch(error){setText('#libraryStatus',error.message||'Export failed.');}
         });
         actions.append(button);
-      }
+      });
       card.append(actions);
       list.append(card);
       shown++;
