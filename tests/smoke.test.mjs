@@ -6,6 +6,7 @@ const htmlUrl=new URL('../index.html',import.meta.url);
 const jsUrl=new URL('../src/main.js',import.meta.url);
 const optionsUrl=new URL('../src/career-options.js',import.meta.url);
 const netlifyUrl=new URL('../netlify.toml',import.meta.url);
+const edgeUrl=new URL('../supabase/functions/generate-cv/index.ts',import.meta.url);
 
 test('careerlaunch shell contains core journeys',async()=>{
   const html=await readFile(htmlUrl,'utf8');
@@ -121,4 +122,15 @@ test('build emits a release identity for exact deployment verification',async()=
   assert.ok(build.includes("release.json"));
   assert.ok(build.includes("GITHUB_SHA"));
   assert.ok(build.includes("generated_at"));
+});
+
+
+test('structured fallback stays truthful when AI provider is unavailable',async()=>{
+  const edge=await readFile(edgeUrl,'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  assert.ok(edge.includes('buildStructuredFallback'));
+  assert.ok(edge.includes('generation_mode: "structured_fallback"'));
+  assert.ok(edge.includes('does not infer missing facts'));
+  assert.ok(js.includes("generation_mode==='structured_fallback'"));
+  assert.ok(js.includes('Structured evidence-only CV draft'));
 });
