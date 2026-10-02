@@ -299,6 +299,9 @@
             <label for="manualSummary">Professional summary</label>
             <textarea id="manualSummary" rows="5"></textarea>
 
+            <label for="manualCoreSkills">Core skills</label>
+            <textarea id="manualCoreSkills" rows="4" placeholder="Optional. One skill per line or separate skills with commas."></textarea>
+
             <div class="subsection">
               <div class="subsection-title">
                 <h4>Previous work experience</h4>
@@ -357,8 +360,10 @@
 
           <div id="manualCvPreview" class="document-preview" hidden></div>
           <div id="manualExportActions" class="action-row" hidden>
-            <button id="saveManualPdf" class="button button-secondary" type="button">Save / Print PDF</button>
-            <button id="saveManualDocx" class="button button-secondary" type="button">Save DOCX</button>
+            <button id="saveManualPdf" class="button button-secondary" type="button">Save PDF locally</button>
+            <button id="saveManualDocx" class="button button-secondary" type="button">Save DOCX locally</button>
+            <button id="saveManualCloudPdf" class="button button-secondary" type="button">Save PDF to cloud</button>
+            <button id="saveManualCloudDocx" class="button button-secondary" type="button">Save DOCX to cloud</button>
           </div>
         </section>
 
@@ -380,7 +385,7 @@
               <option value="other">Other</option>
             </select>
             <label for="documentFile">Choose document</label>
-            <input id="documentFile" type="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
+            <input id="documentFile" type="file" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
             <button class="button" type="submit">Upload document</button>
             <p id="documentUploadResult" aria-live="polite"></p>
           </form>
@@ -402,6 +407,9 @@
               <option value="">No vacancy selected — use my prompt / target roles</option>
             </select>
 
+            <label for="aiVacancyText">Or paste a vacancy description / requirements</label>
+            <textarea id="aiVacancyText" rows="5" placeholder="Use this for a vacancy that is not yet in CareerLaunch. Vacancy text is treated as employer requirements, never as facts about you."></textarea>
+
             <label for="aiPrompt">Tell CareerLaunch what CV you want</label>
             <textarea id="aiPrompt" rows="6" placeholder="Example: Create a concise first-job CV for retail sales. Emphasise customer service, reliability and my school leadership experience, but do not invent work history."></textarea>
 
@@ -412,8 +420,10 @@
 
           <div id="aiCvPreview" class="document-preview" hidden></div>
           <div id="aiExportActions" class="action-row" hidden>
-            <button id="saveAiPdf" class="button button-secondary" type="button">Save / Print PDF</button>
-            <button id="saveAiDocx" class="button button-secondary" type="button">Save DOCX</button>
+            <button id="saveAiPdf" class="button button-secondary" type="button">Save PDF locally</button>
+            <button id="saveAiDocx" class="button button-secondary" type="button">Save DOCX locally</button>
+            <button id="saveAiCloudPdf" class="button button-secondary" type="button">Save PDF to cloud</button>
+            <button id="saveAiCloudDocx" class="button button-secondary" type="button">Save DOCX to cloud</button>
             <button id="saveAiPack" class="button" type="button">Save application pack</button>
           </div>
         </section>
