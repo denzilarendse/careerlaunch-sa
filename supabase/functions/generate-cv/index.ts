@@ -333,6 +333,7 @@ Deno.serve(async (req: Request) => {
   const model = Deno.env.get("CAREERLAUNCH_AI_MODEL") ?? "gpt-5.6-luna";
 
   if (!apiKey) {
+    console.log(JSON.stringify({event:"careerlaunch_generate_cv",mode:"structured_fallback",reason:"missing_provider_key"}));
     return json(buildStructuredFallback(
       evidence as Record<string, unknown>,
       "The external AI provider key is not configured, so CareerLaunch generated a structured evidence-only draft instead."
@@ -436,6 +437,7 @@ match_notes (array of strings).`;
 
   const raw = await aiResponse.json().catch(() => null);
   if (!aiResponse.ok) {
+    console.log(JSON.stringify({event:"careerlaunch_generate_cv",mode:"structured_fallback",reason:"provider_error",status:aiResponse.status,model}));
     return json(buildStructuredFallback(
       evidence as Record<string, unknown>,
       `The AI provider was unavailable (status ${aiResponse.status}), so CareerLaunch generated a structured evidence-only draft instead.`
@@ -444,6 +446,7 @@ match_notes (array of strings).`;
 
   const content = extractResponseText(raw);
   if (!content) {
+    console.log(JSON.stringify({event:"careerlaunch_generate_cv",mode:"structured_fallback",reason:"invalid_provider_response",model}));
     return json(buildStructuredFallback(
       evidence as Record<string, unknown>,
       "The AI provider returned an invalid response, so CareerLaunch generated a structured evidence-only draft instead."
@@ -454,6 +457,7 @@ match_notes (array of strings).`;
   try {
     generated = JSON.parse(content);
   } catch {
+    console.log(JSON.stringify({event:"careerlaunch_generate_cv",mode:"structured_fallback",reason:"provider_response_not_json",model}));
     return json(buildStructuredFallback(
       evidence as Record<string, unknown>,
       "The AI provider response could not be parsed, so CareerLaunch generated a structured evidence-only draft instead."
@@ -472,5 +476,6 @@ match_notes (array of strings).`;
     match_notes: Array.isArray(generated.match_notes) ? generated.match_notes.map((v) => clip(v, 500)).slice(0, 30) : [],
   };
 
+  console.log(JSON.stringify({event:"careerlaunch_generate_cv",mode:"ai_provider",model}));
   return json(safe);
 });
