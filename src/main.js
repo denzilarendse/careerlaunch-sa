@@ -1,4 +1,13 @@
+import {
+  ROLE_OPTIONS,
+  STRENGTH_OPTIONS,
+  SKILL_OPTIONS,
+  OFO_SOURCE_NOTE
+} from './career-options.js';
+
 const SESSION_KEY='careerlaunch_session';
+const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs';
+const PDFJS_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.worker.min.mjs';
 
 const state={
   profile:null,
@@ -7,7 +16,17 @@ const state={
   skills:[],
   opportunities:[],
   applications:[],
+  shortlist:[],
+  documents:[],
+  cvDraft:null,
   selectedOpportunity:null,
+  generatedAi:null,
+  manualPreviewText:'',
+  selections:{
+    roles:[],
+    strengths:[],
+    skills:[]
+  },
   loading:false
 };
 
@@ -60,14 +79,14 @@ function readSession(){
 async function ensureSession(){
   const session=readSession();
   if(!session?.session_token)return null;
-  if(session.expires_at && Date.now()<session.expires_at-60000)return session;
+  if(session.expires_at&&Date.now()<session.expires_at-60000)return session;
   if(!session.refresh_token){
     localStorage.removeItem(SESSION_KEY);
     return null;
   }
   try{
     const refreshed=await authRequest('token?grant_type=refresh_token',{refresh_token:session.refresh_token});
-    if(!storeSession(refreshed))throw new Error('Session refresh did not return a session.');
+    if(!storeSession(refreshed))throw new Error('Session refresh failed.');
     return readSession();
   }catch{
     localStorage.removeItem(SESSION_KEY);
@@ -99,9 +118,31 @@ async function dbRequest(path,{method='GET',body,prefer}={}){
     body:body===undefined?undefined:JSON.stringify(body)
   });
   const text=await response.text();
-  const data=text?JSON.parse(text):null;
+  let data=null;
+  try{ data=text?JSON.parse(text):null; }catch{ data=text; }
   if(!response.ok){
     throw new Error(data?.message||data?.details||data?.hint||`Data request failed (${response.status})`);
+  }
+  return data;
+}
+
+async function functionRequest(name,body){
+  const config=authConfig();
+  const session=await ensureSession();
+  if(!session?.session_token)throw new Error('Your session has expired. Sign in again.');
+  const response=await fetch(`${config.SUPABASE_URL}/functions/v1/${name}`,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      apikey:config.SUPABASE_PUBLISHABLE_KEY,
+      Authorization:`Bearer ${session.session_token}`
+    },
+    body:JSON.stringify(body)
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+    const message=data?.message||data?.detail||data?.error||`AI request failed (${response.status})`;
+    throw new Error(message);
   }
   return data;
 }
@@ -122,6 +163,11 @@ function clear(node){
   while(node?.firstChild)node.removeChild(node.firstChild);
 }
 
+function setText(selector,value){
+  const node=document.querySelector(selector);
+  if(node)node.textContent=value;
+}
+
 function formatDate(value){
   if(!value)return 'No closing date published';
   const date=new Date(value);
@@ -136,6 +182,13 @@ function formatDateTime(value){
   return new Intl.DateTimeFormat('en-ZA',{
     day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'
   }).format(date);
+}
+
+function isExpired(item){
+  if(!item?.closing_date)return false;
+  const close=new Date(item.closing_date);
+  if(Number.isNaN(close.getTime()))return false;
+  return close.getTime()<Date.now();
 }
 
 function switchView(name){
@@ -158,20 +211,26 @@ async function enterApp(){
   document.querySelector('#publicFooter')?.setAttribute('hidden','');
   const shell=document.querySelector('#appShell');
   if(shell)shell.hidden=false;
-  const email=document.querySelector('#signedInAs');
-  if(email)email.textContent=currentEmail();
+  setText('#signedInAs',currentEmail());
   switchView('dashboard');
   await loadWorkspaceData();
 }
 
 function leaveApp(){
   localStorage.removeItem(SESSION_KEY);
-  state.profile=null;
-  state.experience=[];
-  state.education=[];
-  state.skills=[];
-  state.applications=[];
-  state.selectedOpportunity=null;
+  Object.assign(state,{
+    profile:null,
+    experience:[],
+    education:[],
+    skills:[],
+    applications:[],
+    shortlist:[],
+    documents:[],
+    cvDraft:null,
+    selectedOpportunity:null,
+    generatedAi:null,
+    manualPreviewText:''
+  });
   const shell=document.querySelector('#appShell');
   if(shell)shell.hidden=true;
   document.querySelector('#publicHeader')?.removeAttribute('hidden');
@@ -184,25 +243,23 @@ function leaveApp(){
 document.querySelectorAll('.app-nav-button').forEach(button=>{
   button.addEventListener('click',()=>switchView(button.dataset.view));
 });
-
 document.querySelectorAll('[data-go]').forEach(button=>{
   button.addEventListener('click',()=>switchView(button.dataset.go));
 });
-
 document.querySelector('#signOutBtn')?.addEventListener('click',leaveApp);
 
 if('serviceWorker'in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 }
 
+/* Authentication */
 const signupForm=document.querySelector('#signupForm');
-signupForm?.addEventListener('submit',async(event)=>{
+signupForm?.addEventListener('submit',async event=>{
   event.preventDefault();
   const email=document.querySelector('#signupEmail');
   const password=document.querySelector('#signupPassword');
   const output=document.querySelector('#signupResult');
   const submit=signupForm.querySelector('button[type="submit"]');
-
   if(!email?.checkValidity()){
     output.textContent='Enter a valid email address to continue.';
     email?.focus();
@@ -213,34 +270,30 @@ signupForm?.addEventListener('submit',async(event)=>{
     password?.focus();
     return;
   }
-
   submit.disabled=true;
   output.textContent='Creating your CareerLaunch account…';
   try{
     const data=await authRequest('signup',{email:email.value.trim(),password:password.value});
     if(storeSession(data)){
-      output.textContent='Account created. Opening your CareerLaunch workspace…';
       signupForm.reset();
       await enterApp();
     }else{
-      output.textContent='Account created, but Supabase is still requiring email confirmation. Turn Confirm email off for this controlled live-test stage and try with a fresh test account.';
+      output.textContent='Account created, but email confirmation is still required by the authentication service.';
     }
   }catch(error){
-    console.error('CareerLaunch signup failed',error);
-    output.textContent=error?.message||'We could not create your account right now. Please try again.';
+    output.textContent=error?.message||'We could not create your account right now.';
   }finally{
     submit.disabled=false;
   }
 });
 
 const signinForm=document.querySelector('#signinForm');
-signinForm?.addEventListener('submit',async(event)=>{
+signinForm?.addEventListener('submit',async event=>{
   event.preventDefault();
   const email=document.querySelector('#signinEmail');
   const password=document.querySelector('#signinPassword');
   const output=document.querySelector('#signinResult');
   const submit=signinForm.querySelector('button[type="submit"]');
-
   if(!email?.checkValidity()){
     output.textContent='Enter your email address.';
     email?.focus();
@@ -251,55 +304,40 @@ signinForm?.addEventListener('submit',async(event)=>{
     password?.focus();
     return;
   }
-
   submit.disabled=true;
   output.textContent='Signing in…';
   try{
     const data=await authRequest('token?grant_type=password',{email:email.value.trim(),password:password.value});
     if(!storeSession(data))throw new Error('Sign in did not return a valid session.');
-    output.textContent='Signed in. Opening your CareerLaunch workspace…';
     signinForm.reset();
     await enterApp();
   }catch(error){
-    console.error('CareerLaunch sign in failed',error);
     output.textContent=error?.message||'Sign in failed. Check your email address and password.';
   }finally{
     submit.disabled=false;
   }
 });
 
+/* Data loading */
 async function loadWorkspaceData(){
   if(state.loading)return;
   state.loading=true;
-  setWorkspaceLoading(true);
   try{
     await Promise.all([
       loadProfileAndEvidence(),
       loadOpportunities(),
-      loadApplications()
+      loadApplications(),
+      loadShortlist(),
+      loadDocuments(),
+      loadCvDraft()
     ]);
     renderAll();
   }catch(error){
     console.error('CareerLaunch workspace load failed',error);
-    setGlobalStatus(error.message||'Some live data could not be loaded.');
+    setText('#opportunityStatus',error.message||'Some live data could not be loaded.');
   }finally{
     state.loading=false;
-    setWorkspaceLoading(false);
   }
-}
-
-function setWorkspaceLoading(loading){
-  const status=document.querySelector('#opportunityStatus');
-  const apps=document.querySelector('#applicationStatus');
-  if(loading){
-    if(status)status.textContent='Loading verified opportunities…';
-    if(apps)apps.textContent='Loading your applications…';
-  }
-}
-
-function setGlobalStatus(message){
-  const status=document.querySelector('#opportunityStatus');
-  if(status)status.textContent=message;
 }
 
 async function loadProfileAndEvidence(){
@@ -320,32 +358,69 @@ async function loadProfileAndEvidence(){
 
 async function loadOpportunities(){
   const data=await dbRequest('opportunities?select=*&status=eq.open&order=closing_date.asc.nullslast');
-  state.opportunities=Array.isArray(data)?data:[];
+  state.opportunities=(Array.isArray(data)?data:[]).filter(item=>!isExpired(item));
 }
 
 async function loadApplications(){
   const userId=currentUserId();
   if(!userId)return;
-  const data=await dbRequest(`applications?select=*&user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`);
-  state.applications=Array.isArray(data)?data:[];
+  state.applications=await dbRequest(
+    `applications?select=*&user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`
+  )||[];
+}
+
+async function loadShortlist(){
+  const userId=currentUserId();
+  if(!userId)return;
+  const rows=await dbRequest(
+    `shortlisted_opportunities?select=id,created_at,opportunity_id,opportunities(*)&user_id=eq.${encodeURIComponent(userId)}&order=created_at.asc`
+  );
+  state.shortlist=Array.isArray(rows)?rows:[];
+}
+
+async function loadDocuments(){
+  const userId=currentUserId();
+  if(!userId)return;
+  state.documents=await dbRequest(
+    `candidate_documents?select=*&user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`
+  )||[];
+}
+
+async function loadCvDraft(){
+  const userId=currentUserId();
+  if(!userId)return;
+  const rows=await dbRequest(`cv_drafts?select=*&user_id=eq.${encodeURIComponent(userId)}&limit=1`);
+  state.cvDraft=rows?.[0]||null;
+  const content=state.cvDraft?.content||{};
+  state.selections.roles=Array.isArray(content.target_roles)?content.target_roles:[];
+  state.selections.strengths=Array.isArray(content.strengths)?content.strengths:[];
+  state.selections.skills=Array.isArray(content.skills)?content.skills:[];
 }
 
 function renderAll(){
   hydrateProfileForm();
+  hydrateManualCv();
+  hydrateSelectionState();
   renderEvidenceLists();
   renderOpportunityList();
   renderStudyList();
   renderApplications();
+  renderShortlist();
+  renderDocuments();
   renderDashboard();
+  populateAiVacancySelect();
 }
 
+/* Profile */
 function hydrateProfileForm(){
   const profile=state.profile||{};
   const values={
     profileName:profile.full_name||'',
     profilePhone:profile.phone||'',
+    profileAltPhone:profile.alternative_phone||'',
     profileCity:profile.city||'',
     profileProvince:profile.province||'',
+    profileAddress:profile.address_text||'',
     profileHeadline:profile.headline||'',
     profileSummary:profile.summary||''
   };
@@ -357,20 +432,61 @@ function hydrateProfileForm(){
   if(matric)matric.checked=Boolean(profile.is_matriculant);
 }
 
+document.querySelector('#profileForm')?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const output=document.querySelector('#profileResult');
+  const userId=currentUserId();
+  if(!userId)return;
+  const fullName=document.querySelector('#profileName')?.value.trim()||state.profile?.full_name||'';
+  if(!fullName){
+    output.textContent='You can skip this for now. Add a full name when you want to save the profile section.';
+    return;
+  }
+  const payload={
+    user_id:userId,
+    full_name:fullName,
+    email:currentEmail(),
+    phone:valueOrNull('#profilePhone'),
+    alternative_phone:valueOrNull('#profileAltPhone'),
+    city:valueOrNull('#profileCity'),
+    province:document.querySelector('#profileProvince')?.value||null,
+    country:'South Africa',
+    address_text:valueOrNull('#profileAddress'),
+    headline:valueOrNull('#profileHeadline'),
+    summary:valueOrNull('#profileSummary'),
+    is_matriculant:Boolean(document.querySelector('#profileMatriculant')?.checked),
+    updated_at:new Date().toISOString()
+  };
+  try{
+    const saved=await dbRequest('profiles?on_conflict=user_id',{
+      method:'POST',
+      body:payload,
+      prefer:'resolution=merge-duplicates,return=representation'
+    });
+    state.profile=saved?.[0]||payload;
+    output.textContent='Profile saved securely to CareerLaunch.';
+    hydrateManualCv();
+    renderDashboard();
+  }catch(error){
+    output.textContent=error.message||'Could not save profile.';
+  }
+});
+
+function valueOrNull(selector){
+  const value=document.querySelector(selector)?.value?.trim();
+  return value||null;
+}
+
+/* Evidence records */
 function renderEvidenceLists(){
-  renderRecords('#experienceList',state.experience,item=>[
-    item.job_title,
-    item.employer,
-    item.description
-  ]);
-  renderRecords('#educationList',state.education,item=>[
+  renderRecords('#experienceList',state.experience,item=>[item.job_title,item.employer,item.description]);
+  renderRecords('#educationList',state.education,item=>[item.qualification,item.institution,item.field_of_study]);
+  renderRecords('#skillList',state.skills,item=>[item.skill_name,item.evidence]);
+  renderRecords('#manualExperienceList',state.experience,item=>[item.job_title,item.employer,item.description]);
+  renderRecords('#manualEducationList',state.education,item=>[
     item.qualification,
     item.institution,
-    item.field_of_study
-  ]);
-  renderRecords('#skillList',state.skills,item=>[
-    item.skill_name,
-    item.evidence
+    [item.field_of_study,...(item.subjects||[])].filter(Boolean).join(' • ')
   ]);
 }
 
@@ -385,117 +501,79 @@ function renderRecords(selector,records,toLines){
   records.forEach(record=>{
     const card=make('article',{className:'mini-record'});
     toLines(record).filter(Boolean).forEach((line,index)=>{
-      card.append(make(index===0?'strong':'span',{text:line}));
+      card.append(make(index===0?'strong':'span',{text:String(line)}));
     });
     container.append(card);
   });
 }
 
-document.querySelector('#profileForm')?.addEventListener('submit',async event=>{
-  event.preventDefault();
-  const output=document.querySelector('#profileResult');
-  const userId=currentUserId();
-  if(!userId){
-    output.textContent='Your session is unavailable. Sign in again.';
-    return;
-  }
-  const fullName=document.querySelector('#profileName')?.value.trim()||'';
-  if(!fullName){
-    output.textContent='Add your full name before saving.';
-    return;
-  }
-  const payload={
-    user_id:userId,
-    full_name:fullName,
-    email:currentEmail(),
-    phone:document.querySelector('#profilePhone')?.value.trim()||null,
-    city:document.querySelector('#profileCity')?.value.trim()||null,
-    province:document.querySelector('#profileProvince')?.value||null,
-    country:'South Africa',
-    headline:document.querySelector('#profileHeadline')?.value.trim()||null,
-    summary:document.querySelector('#profileSummary')?.value.trim()||null,
-    is_matriculant:Boolean(document.querySelector('#profileMatriculant')?.checked),
-    updated_at:new Date().toISOString()
-  };
-  output.textContent='Saving profile…';
-  try{
-    const saved=await dbRequest('profiles?on_conflict=user_id',{
-      method:'POST',
-      body:payload,
-      prefer:'resolution=merge-duplicates,return=representation'
-    });
-    state.profile=saved?.[0]||payload;
-    output.textContent='Profile saved securely to CareerLaunch.';
-    renderDashboard();
-  }catch(error){
-    output.textContent=error.message||'Could not save profile.';
-  }
-});
+async function addExperience(payload){
+  const saved=await dbRequest('candidate_experience',{
+    method:'POST',
+    body:{user_id:currentUserId(),...payload},
+    prefer:'return=representation'
+  });
+  state.experience=[...(saved||[]),...state.experience];
+  renderEvidenceLists();
+  renderDashboard();
+}
+
+async function addEducation(payload){
+  const saved=await dbRequest('candidate_education',{
+    method:'POST',
+    body:{user_id:currentUserId(),...payload},
+    prefer:'return=representation'
+  });
+  state.education=[...(saved||[]),...state.education];
+  renderEvidenceLists();
+  renderDashboard();
+}
 
 document.querySelector('#experienceForm')?.addEventListener('submit',async event=>{
   event.preventDefault();
-  const userId=currentUserId();
-  const employer=document.querySelector('#experienceEmployer')?.value.trim();
-  const jobTitle=document.querySelector('#experienceTitle')?.value.trim();
-  if(!userId||!employer||!jobTitle)return;
+  const employer=valueOrNull('#experienceEmployer');
+  const jobTitle=valueOrNull('#experienceTitle');
+  if(!employer&&!jobTitle)return;
   try{
-    const saved=await dbRequest('candidate_experience',{
-      method:'POST',
-      body:{
-        user_id:userId,
-        employer,
-        job_title:jobTitle,
-        description:document.querySelector('#experienceDescription')?.value.trim()||null
-      },
-      prefer:'return=representation'
+    await addExperience({
+      employer:employer||'Not provided',
+      job_title:jobTitle||'Role not provided',
+      description:valueOrNull('#experienceDescription')
     });
-    state.experience=[...(saved||[]),...state.experience];
     event.currentTarget.reset();
-    renderEvidenceLists();
-    renderDashboard();
   }catch(error){
-    alert(error.message||'Could not save experience.');
+    setText('#profileResult',error.message||'Could not save experience.');
   }
 });
 
 document.querySelector('#educationForm')?.addEventListener('submit',async event=>{
   event.preventDefault();
-  const userId=currentUserId();
-  const institution=document.querySelector('#educationInstitution')?.value.trim();
-  const qualification=document.querySelector('#educationQualification')?.value.trim();
-  if(!userId||!institution||!qualification)return;
+  const institution=valueOrNull('#educationInstitution');
+  const qualification=valueOrNull('#educationQualification');
+  if(!institution&&!qualification)return;
   try{
-    const saved=await dbRequest('candidate_education',{
-      method:'POST',
-      body:{
-        user_id:userId,
-        institution,
-        qualification,
-        field_of_study:document.querySelector('#educationField')?.value.trim()||null
-      },
-      prefer:'return=representation'
+    await addEducation({
+      institution:institution||'Not provided',
+      qualification:qualification||'Qualification not provided',
+      field_of_study:valueOrNull('#educationField')
     });
-    state.education=[...(saved||[]),...state.education];
     event.currentTarget.reset();
-    renderEvidenceLists();
-    renderDashboard();
   }catch(error){
-    alert(error.message||'Could not save education.');
+    setText('#profileResult',error.message||'Could not save education.');
   }
 });
 
 document.querySelector('#skillForm')?.addEventListener('submit',async event=>{
   event.preventDefault();
-  const userId=currentUserId();
-  const skillName=document.querySelector('#skillName')?.value.trim();
-  if(!userId||!skillName)return;
+  const skillName=valueOrNull('#skillName');
+  if(!skillName)return;
   try{
     const saved=await dbRequest('candidate_skills',{
       method:'POST',
       body:{
-        user_id:userId,
+        user_id:currentUserId(),
         skill_name:skillName,
-        evidence:document.querySelector('#skillEvidence')?.value.trim()||null
+        evidence:valueOrNull('#skillEvidence')
       },
       prefer:'return=representation'
     });
@@ -504,75 +582,517 @@ document.querySelector('#skillForm')?.addEventListener('submit',async event=>{
     renderEvidenceLists();
     renderDashboard();
   }catch(error){
-    alert(error.message||'Could not save skill.');
+    setText('#profileResult',error.message||'Could not save skill.');
   }
 });
 
-function renderDashboard(){
-  const profile=state.profile||{};
-  const required=[
-    profile.full_name,
-    profile.phone,
-    profile.city,
-    profile.province,
-    profile.headline,
-    profile.summary
-  ];
-  const profileBase=Math.round(required.filter(Boolean).length/required.length*70);
-  const evidenceBonus=Math.min(30,
-    (state.experience.length?10:0)+
-    (state.education.length?10:0)+
-    (state.skills.length?10:0)
-  );
-  const completeness=Math.min(100,profileBase+evidenceBonus);
-  const open=state.opportunities.length;
-  const deadlines=state.opportunities
-    .filter(item=>item.closing_date)
-    .map(item=>new Date(item.closing_date))
-    .filter(date=>date.getTime()>Date.now())
-    .sort((a,b)=>a-b);
-  setText('#statProfile',`${completeness}%`);
-  setText('#statOpportunities',String(open));
-  setText('#statApplications',String(state.applications.length));
-  setText('#statDeadline',deadlines.length?formatDate(deadlines[0]):'No dated deadline');
+/* Searchable multi-selects */
+function setupMultiSelect({key,input,menu,chips,otherWrap,otherInput,options}){
+  const inputEl=document.querySelector(input);
+  const menuEl=document.querySelector(menu);
+  const chipsEl=document.querySelector(chips);
+  const otherWrapEl=document.querySelector(otherWrap);
+  const otherInputEl=document.querySelector(otherInput);
+  if(!inputEl||!menuEl||!chipsEl)return;
 
-  const pulse=document.querySelector('#researchPulse');
-  if(!pulse)return;
-  clear(pulse);
-  const recent=[...state.opportunities]
-    .sort((a,b)=>new Date(b.verified_at||0)-new Date(a.verified_at||0))
-    .slice(0,4);
-  if(!recent.length){
-    pulse.append(make('p',{className:'muted',text:'No verified opportunity research has been loaded yet.'}));
+  const renderMenu=()=>{
+    const query=inputEl.value.trim().toLowerCase();
+    const visible=options
+      .filter(item=>!query||item.toLowerCase().includes(query))
+      .filter(item=>item==='Other'||!state.selections[key].includes(item))
+      .slice(0,30);
+    clear(menuEl);
+    visible.forEach(item=>{
+      const button=make('button',{className:'option-item',text:item});
+      button.type='button';
+      button.addEventListener('mousedown',event=>{
+        event.preventDefault();
+        if(item==='Other'){
+          otherWrapEl.hidden=false;
+          otherInputEl?.focus();
+        }else{
+          state.selections[key]=[...state.selections[key],item];
+          inputEl.value='';
+          renderChips();
+        }
+        renderMenu();
+      });
+      menuEl.append(button);
+    });
+    menuEl.hidden=visible.length===0;
+  };
+
+  const renderChips=()=>{
+    clear(chipsEl);
+    state.selections[key].forEach(item=>{
+      const chip=make('span',{className:'chip'});
+      chip.append(make('span',{text:item}));
+      const remove=make('button',{text:'×',attrs:{'aria-label':`Remove ${item}`}});
+      remove.type='button';
+      remove.addEventListener('click',()=>{
+        state.selections[key]=state.selections[key].filter(value=>value!==item);
+        renderChips();
+      });
+      chip.append(remove);
+      chipsEl.append(chip);
+    });
+  };
+
+  inputEl.addEventListener('focus',renderMenu);
+  inputEl.addEventListener('input',renderMenu);
+  inputEl.addEventListener('keydown',event=>{
+    if(event.key==='Enter'){
+      event.preventDefault();
+      const first=menuEl.querySelector('.option-item');
+      first?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
+    }
+    if(event.key==='Escape')menuEl.hidden=true;
+  });
+  inputEl.addEventListener('blur',()=>setTimeout(()=>{menuEl.hidden=true;},150));
+  otherInputEl?.addEventListener('input',()=>{});
+  return {renderChips};
+}
+
+const roleMulti=setupMultiSelect({
+  key:'roles',input:'#roleSearch',menu:'#roleOptions',chips:'#roleChips',
+  otherWrap:'#roleOtherWrap',otherInput:'#roleOther',options:ROLE_OPTIONS
+});
+const strengthMulti=setupMultiSelect({
+  key:'strengths',input:'#strengthSearch',menu:'#strengthOptions',chips:'#strengthChips',
+  otherWrap:'#strengthOtherWrap',otherInput:'#strengthOther',options:STRENGTH_OPTIONS
+});
+const skillMulti=setupMultiSelect({
+  key:'skills',input:'#skillSearchCv',menu:'#skillOptionsCv',chips:'#skillChipsCv',
+  otherWrap:'#skillOtherWrap',otherInput:'#skillOtherCv',options:SKILL_OPTIONS
+});
+
+function selectionValues(key){
+  const values=[...state.selections[key]];
+  const otherMap={
+    roles:'#roleOther',
+    strengths:'#strengthOther',
+    skills:'#skillOtherCv'
+  };
+  const other=valueOrNull(otherMap[key]);
+  if(other&&!values.includes(other))values.push(other);
+  return values;
+}
+
+function hydrateSelectionState(){
+  roleMulti?.renderChips();
+  strengthMulti?.renderChips();
+  skillMulti?.renderChips();
+  const content=state.cvDraft?.content||{};
+  setChecked('#noExperienceYet',Boolean(content.no_experience_yet));
+  setChecked('#firstJobMode',Boolean(content.first_job_mode));
+  setValue('#cvExperienceNotes',content.experience_notes||'');
+  setValue('#roleOther',content.other_role||'');
+  setValue('#strengthOther',content.other_strength||'');
+  setValue('#skillOtherCv',content.other_skill||'');
+  document.querySelector('#roleOtherWrap').hidden=!content.other_role;
+  document.querySelector('#strengthOtherWrap').hidden=!content.other_strength;
+  document.querySelector('#skillOtherWrap').hidden=!content.other_skill;
+}
+
+function setValue(selector,value){
+  const node=document.querySelector(selector);
+  if(node)node.value=value??'';
+}
+function setChecked(selector,value){
+  const node=document.querySelector(selector);
+  if(node)node.checked=Boolean(value);
+}
+
+/* Expanded manual CV builder */
+function hydrateManualCv(){
+  const profile=state.profile||{};
+  const content=state.cvDraft?.content||{};
+  setValue('#manualName',profile.full_name||content.full_name||'');
+  setValue('#manualEmail',profile.email||currentEmail());
+  setValue('#manualPhone',profile.phone||content.phone||'');
+  setValue('#manualAltPhone',profile.alternative_phone||content.alternative_phone||'');
+  setValue('#manualLocation',[profile.city,profile.province].filter(Boolean).join(', ')||content.location||'');
+  setValue('#manualAddress',profile.address_text||content.address||'');
+  setValue('#manualSummary',profile.summary||content.professional_summary||'');
+  setValue('#manualLanguages',(profile.languages||content.languages||[]).join(', '));
+  setValue('#manualAvailability',profile.availability||content.availability||'');
+  const references=profile.references||content.references||[];
+  setValue('#manualReferences',references.map(item=>typeof item==='string'?item:item?.text||'').filter(Boolean).join('\n'));
+}
+
+function buildCvDraftContent(){
+  return {
+    full_name:valueOrNull('#manualName'),
+    email:valueOrNull('#manualEmail')||currentEmail(),
+    phone:valueOrNull('#manualPhone'),
+    alternative_phone:valueOrNull('#manualAltPhone'),
+    location:valueOrNull('#manualLocation'),
+    address:valueOrNull('#manualAddress'),
+    professional_summary:valueOrNull('#manualSummary'),
+    languages:splitCsv(valueOrNull('#manualLanguages')),
+    availability:valueOrNull('#manualAvailability'),
+    references:(document.querySelector('#manualReferences')?.value||'')
+      .split('\n').map(v=>v.trim()).filter(Boolean).map(text=>({text})),
+    target_roles:selectionValues('roles'),
+    strengths:selectionValues('strengths'),
+    skills:selectionValues('skills'),
+    other_role:valueOrNull('#roleOther'),
+    other_strength:valueOrNull('#strengthOther'),
+    other_skill:valueOrNull('#skillOtherCv'),
+    no_experience_yet:Boolean(document.querySelector('#noExperienceYet')?.checked),
+    first_job_mode:Boolean(document.querySelector('#firstJobMode')?.checked),
+    experience_notes:valueOrNull('#cvExperienceNotes'),
+    ofo_source_note:OFO_SOURCE_NOTE
+  };
+}
+
+function splitCsv(value){
+  return String(value||'').split(',').map(v=>v.trim()).filter(Boolean);
+}
+
+async function saveCvDraft(){
+  const content=buildCvDraftContent();
+  const rows=await dbRequest('cv_drafts?on_conflict=user_id',{
+    method:'POST',
+    body:{user_id:currentUserId(),content,updated_at:new Date().toISOString()},
+    prefer:'resolution=merge-duplicates,return=representation'
+  });
+  state.cvDraft=rows?.[0]||{user_id:currentUserId(),content};
+  return content;
+}
+
+async function saveManualProfileFields(content){
+  const existing=state.profile||{};
+  const fullName=content.full_name||existing.full_name;
+  if(!fullName)return;
+  const payload={
+    user_id:currentUserId(),
+    full_name:fullName,
+    email:content.email||existing.email||currentEmail(),
+    phone:content.phone||existing.phone||null,
+    alternative_phone:content.alternative_phone||existing.alternative_phone||null,
+    city:existing.city||content.location||null,
+    province:existing.province||null,
+    country:existing.country||'South Africa',
+    address_text:content.address||existing.address_text||null,
+    headline:existing.headline||selectionValues('roles')[0]||null,
+    summary:content.professional_summary||existing.summary||null,
+    is_matriculant:Boolean(existing.is_matriculant||content.first_job_mode),
+    languages:content.languages||existing.languages||[],
+    availability:content.availability||existing.availability||null,
+    references:content.references||existing.references||[],
+    cv_builder_state:{
+      target_roles:content.target_roles,
+      strengths:content.strengths,
+      skills:content.skills
+    },
+    updated_at:new Date().toISOString()
+  };
+  const rows=await dbRequest('profiles?on_conflict=user_id',{
+    method:'POST',
+    body:payload,
+    prefer:'resolution=merge-duplicates,return=representation'
+  });
+  state.profile=rows?.[0]||payload;
+}
+
+document.querySelector('#manualCvForm')?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const output=document.querySelector('#manualCvResult');
+  output.textContent='Saving your CV draft…';
+  try{
+    const content=await saveCvDraft();
+    await saveManualProfileFields(content);
+    output.textContent='CV draft saved to your private CareerLaunch account.';
+    state.manualPreviewText=buildManualCvText();
+    renderManualPreview();
+    renderDashboard();
+  }catch(error){
+    output.textContent=error.message||'Could not save the CV draft.';
+  }
+});
+
+document.querySelector('#previewManualCv')?.addEventListener('click',()=>{
+  state.manualPreviewText=buildManualCvText();
+  renderManualPreview();
+});
+
+function buildManualCvText(){
+  const content=buildCvDraftContent();
+  const name=content.full_name||state.profile?.full_name||'';
+  const lines=[];
+  lines.push(name?`CURRICULUM VITAE OF ${name.toUpperCase()}`:'CURRICULUM VITAE');
+  lines.push('');
+  lines.push('CONTACT DETAILS');
+  const contacts=[
+    content.phone,
+    content.alternative_phone&&`Alternative: ${content.alternative_phone}`,
+    content.email,
+    content.location,
+    content.address
+  ].filter(Boolean);
+  if(contacts.length)lines.push(...contacts);
+  else lines.push('Contact details not yet provided.');
+  lines.push('');
+  lines.push('PROFESSIONAL SUMMARY');
+  lines.push(content.professional_summary||'Professional summary not yet provided.');
+  lines.push('');
+
+  if(content.target_roles.length){
+    lines.push('CAREER INTERESTS');
+    lines.push(content.target_roles.join(' • '));
+    lines.push('');
+  }
+
+  lines.push('WORK EXPERIENCE');
+  if(state.experience.length){
+    state.experience.forEach(item=>{
+      const dates=[item.start_date,item.end_date].filter(Boolean).join(' – ');
+      lines.push(`${item.job_title||'Role'} — ${item.employer||'Employer'}${dates?` (${dates})`:''}`);
+      if(item.location)lines.push(item.location);
+      if(item.description)lines.push(item.description);
+      if(item.achievements?.length)lines.push(...item.achievements.map(v=>`• ${v}`));
+      lines.push('');
+    });
+  }else if(content.no_experience_yet||content.first_job_mode){
+    lines.push('No formal work experience provided yet.');
+    if(content.experience_notes)lines.push(content.experience_notes);
+    lines.push('');
+  }else{
+    lines.push('No work experience entered.');
+    lines.push('');
+  }
+
+  lines.push('EDUCATION');
+  if(state.education.length){
+    state.education.forEach(item=>{
+      lines.push(`${item.qualification||'Qualification'} — ${item.institution||'Institution'}`);
+      if(item.field_of_study)lines.push(item.field_of_study);
+      if(item.subjects?.length)lines.push(`Subjects: ${item.subjects.join(', ')}`);
+      if(item.result_summary)lines.push(item.result_summary);
+      lines.push('');
+    });
+  }else{
+    lines.push('No education entered.');
+    lines.push('');
+  }
+
+  const combinedSkills=[
+    ...content.skills,
+    ...state.skills.map(item=>item.skill_name)
+  ].filter(Boolean);
+  lines.push('CORE SKILLS');
+  lines.push(combinedSkills.length?[...new Set(combinedSkills)].join(' • '):'No skills selected yet.');
+  lines.push('');
+
+  if(content.strengths.length){
+    lines.push('STRENGTHS');
+    lines.push(content.strengths.join(' • '));
+    lines.push('');
+  }
+
+  lines.push('LANGUAGES');
+  lines.push(content.languages.length?content.languages.join(' • '):'Not provided.');
+  lines.push('');
+  lines.push('AVAILABILITY');
+  lines.push(content.availability||'Not provided.');
+  lines.push('');
+  lines.push('REFERENCES');
+  lines.push(content.references.length?content.references.map(item=>item.text).join('\n'):'Available on request / not provided.');
+  return lines.join('\n').trim();
+}
+
+function renderManualPreview(){
+  const preview=document.querySelector('#manualCvPreview');
+  if(!preview)return;
+  clear(preview);
+  preview.append(make('pre',{text:state.manualPreviewText||buildManualCvText()}));
+  preview.hidden=false;
+  document.querySelector('#manualExportActions').hidden=false;
+}
+
+document.querySelector('#addManualExperience')?.addEventListener('click',()=>{
+  const editor=document.querySelector('#manualExperienceEditor');
+  editor.hidden=!editor.hidden;
+});
+document.querySelector('#saveManualExperience')?.addEventListener('click',async()=>{
+  const employer=valueOrNull('#manualExperienceEmployer');
+  const title=valueOrNull('#manualExperienceTitle');
+  if(!employer&&!title)return;
+  try{
+    await addExperience({
+      employer:employer||'Not provided',
+      job_title:title||'Role not provided',
+      start_date:valueOrNull('#manualExperienceStart'),
+      end_date:valueOrNull('#manualExperienceEnd'),
+      location:valueOrNull('#manualExperienceLocation'),
+      description:valueOrNull('#manualExperienceDescription')
+    });
+    ['#manualExperienceEmployer','#manualExperienceTitle','#manualExperienceStart','#manualExperienceEnd','#manualExperienceLocation','#manualExperienceDescription']
+      .forEach(selector=>setValue(selector,''));
+  }catch(error){
+    setText('#manualCvResult',error.message||'Could not save experience.');
+  }
+});
+
+document.querySelector('#addManualEducation')?.addEventListener('click',()=>{
+  const editor=document.querySelector('#manualEducationEditor');
+  editor.hidden=!editor.hidden;
+});
+document.querySelector('#saveManualEducation')?.addEventListener('click',async()=>{
+  const institution=valueOrNull('#manualEducationInstitution');
+  const qualification=valueOrNull('#manualEducationQualification');
+  if(!institution&&!qualification)return;
+  try{
+    await addEducation({
+      institution:institution||'Not provided',
+      qualification:qualification||'Qualification not provided',
+      field_of_study:valueOrNull('#manualEducationField'),
+      status:valueOrNull('#manualEducationStatus'),
+      subjects:splitCsv(valueOrNull('#manualEducationSubjects'))
+    });
+    ['#manualEducationInstitution','#manualEducationQualification','#manualEducationField','#manualEducationStatus','#manualEducationSubjects']
+      .forEach(selector=>setValue(selector,''));
+  }catch(error){
+    setText('#manualCvResult',error.message||'Could not save education.');
+  }
+});
+
+/* Uploads */
+async function extractTextFromFile(file){
+  const lower=file.name.toLowerCase();
+  if(file.type==='text/plain'||lower.endsWith('.txt')){
+    return (await file.text()).slice(0,60000);
+  }
+  if(lower.endsWith('.docx')&&window.JSZip){
+    const zip=await window.JSZip.loadAsync(await file.arrayBuffer());
+    const xml=await zip.file('word/document.xml')?.async('string');
+    if(!xml)return '';
+    const doc=new DOMParser().parseFromString(xml,'application/xml');
+    return [...doc.getElementsByTagNameNS('*','t')]
+      .map(node=>node.textContent||'')
+      .join(' ')
+      .replace(/\s+/g,' ')
+      .trim()
+      .slice(0,60000);
+  }
+  if(file.type==='application/pdf'||lower.endsWith('.pdf')){
+    try{
+      const pdfjs=await import(PDFJS_URL);
+      pdfjs.GlobalWorkerOptions.workerSrc=PDFJS_WORKER_URL;
+      const pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+      const pages=[];
+      for(let pageNo=1;pageNo<=Math.min(pdf.numPages,40);pageNo++){
+        const page=await pdf.getPage(pageNo);
+        const content=await page.getTextContent();
+        pages.push(content.items.map(item=>item.str).join(' '));
+      }
+      return pages.join('\n').slice(0,60000);
+    }catch(error){
+      console.warn('PDF text extraction unavailable',error);
+      return '';
+    }
+  }
+  return '';
+}
+
+function safeFileName(name){
+  return name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/-+/g,'-').slice(0,120)||'document';
+}
+
+async function uploadCandidateDocument(file,documentType){
+  const config=authConfig();
+  const session=await ensureSession();
+  if(!session?.session_token)throw new Error('Your session has expired.');
+  const userId=currentUserId();
+  const path=`${userId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const response=await fetch(`${config.SUPABASE_URL}/storage/v1/object/candidate-documents/${path}`,{
+    method:'POST',
+    headers:{
+      apikey:config.SUPABASE_PUBLISHABLE_KEY,
+      Authorization:`Bearer ${session.session_token}`,
+      'Content-Type':file.type||'application/octet-stream',
+      'x-upsert':'false'
+    },
+    body:file
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data?.message||data?.error||'Document upload failed.');
+  const extractedText=await extractTextFromFile(file);
+  const rows=await dbRequest('candidate_documents',{
+    method:'POST',
+    body:{
+      user_id:userId,
+      document_type:documentType,
+      file_name:file.name,
+      storage_path:path,
+      verified:false,
+      metadata:{
+        mime_type:file.type||null,
+        size:file.size,
+        extracted_text:extractedText||null,
+        text_extraction:extractedText?'available':'not_available'
+      }
+    },
+    prefer:'return=representation'
+  });
+  state.documents=[...(rows||[]),...state.documents];
+  renderDocuments();
+  return {extractedText};
+}
+
+document.querySelector('#documentUploadForm')?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const input=document.querySelector('#documentFile');
+  const output=document.querySelector('#documentUploadResult');
+  const file=input?.files?.[0];
+  if(!file){
+    output.textContent='Choose a document first.';
     return;
   }
-  recent.forEach(item=>{
-    const row=make('button',{className:'research-row'});
-    row.type='button';
-    row.append(
-      make('strong',{text:item.title}),
-      make('span',{text:`${item.organization} • verified ${formatDateTime(item.verified_at)}`})
+  if(file.size>15*1024*1024){
+    output.textContent='The maximum upload size is 15 MB.';
+    return;
+  }
+  output.textContent='Uploading securely and extracting usable text where supported…';
+  try{
+    const result=await uploadCandidateDocument(file,document.querySelector('#documentType')?.value||'other');
+    output.textContent=result.extractedText
+      ?'Document uploaded. Text was extracted for AI drafting.'
+      :'Document uploaded securely. This file type could not be text-extracted in the browser, so add key facts manually if AI needs them.';
+    event.currentTarget.reset();
+  }catch(error){
+    output.textContent=error.message||'Could not upload document.';
+  }
+});
+
+function renderDocuments(){
+  const list=document.querySelector('#documentList');
+  if(!list)return;
+  clear(list);
+  if(!state.documents.length){
+    list.append(make('p',{className:'muted',text:'No documents uploaded yet.'}));
+    return;
+  }
+  state.documents.forEach(doc=>{
+    const hasText=Boolean(doc.metadata?.extracted_text);
+    const card=make('article',{className:'mini-record'});
+    card.append(
+      make('strong',{text:doc.file_name}),
+      make('span',{text:`${doc.document_type} • ${hasText?'text available to AI':'stored securely'}`}),
+      make('span',{text:`Uploaded ${formatDateTime(doc.created_at)}`})
     );
-    row.addEventListener('click',()=>{
-      state.selectedOpportunity=item;
-      applySelectedOpportunity();
-      switchView('jobs');
-      document.querySelector(`[data-opportunity-id="${item.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
-    });
-    pulse.append(row);
+    list.append(card);
   });
 }
 
-function setText(selector,value){
-  const node=document.querySelector(selector);
-  if(node)node.textContent=value;
-}
-
+/* Opportunities and shortlist */
 function filteredOpportunities(){
   const type=document.querySelector('#opportunityTypeFilter')?.value||'';
   const province=document.querySelector('#opportunityProvinceFilter')?.value||'';
   const search=(document.querySelector('#opportunitySearch')?.value||'').trim().toLowerCase();
   return state.opportunities.filter(item=>{
+    if(isExpired(item))return false;
     if(type&&item.opportunity_type!==type)return false;
     if(province&&item.province!==province)return false;
     if(search){
@@ -590,7 +1110,7 @@ function renderOpportunityList(){
   if(!list||!status)return;
   clear(list);
   const items=filteredOpportunities();
-  status.textContent=`${items.length} verified open opportunit${items.length===1?'y':'ies'} shown. Research records: ${state.opportunities.length}.`;
+  status.textContent=`${items.length} current verified opportunit${items.length===1?'y':'ies'} shown.`;
   if(!items.length){
     list.append(make('div',{className:'empty-state',text:'No researched opportunity currently matches these filters.'}));
     return;
@@ -598,7 +1118,7 @@ function renderOpportunityList(){
   items.forEach(item=>list.append(buildOpportunityCard(item)));
 }
 
-function buildOpportunityCard(item){
+function buildOpportunityCard(item,{shortlistView=false}={}){
   const card=make('article',{className:'opportunity-card',attrs:{'data-opportunity-id':item.id}});
   const heading=make('div',{className:'opportunity-heading'});
   const titleWrap=make('div');
@@ -608,60 +1128,122 @@ function buildOpportunityCard(item){
     make('p',{className:'muted',text:[item.organization,item.location,item.province].filter(Boolean).join(' • ')})
   );
   const deadline=make('div',{className:'deadline'});
-  deadline.append(
-    make('span',{text:'Closing'}),
-    make('strong',{text:formatDate(item.closing_date)})
-  );
+  deadline.append(make('span',{text:'Closing'}),make('strong',{text:formatDate(item.closing_date)}));
   heading.append(titleWrap,deadline);
   card.append(heading);
-
-  if(item.salary_or_stipend){
-    card.append(make('p',{className:'salary',text:item.salary_or_stipend}));
-  }
-  if(item.description){
-    card.append(make('p',{text:item.description}));
-  }
-  if(item.reference_number){
-    card.append(make('p',{className:'meta',text:`Reference: ${item.reference_number}`}));
-  }
+  if(item.salary_or_stipend)card.append(make('p',{className:'salary',text:item.salary_or_stipend}));
+  if(item.description)card.append(make('p',{text:item.description}));
+  if(item.reference_number)card.append(make('p',{className:'meta',text:`Reference: ${item.reference_number}`}));
   card.append(make('p',{className:'meta',text:`Source: ${item.source_name||'Official source'} • verified ${formatDateTime(item.verified_at)}`}));
 
   const actions=make('div',{className:'card-actions'});
-  const source=make('a',{
+  actions.append(make('a',{
     className:'button button-secondary button-small',
     text:'Open official source',
     attrs:{href:item.source_url,target:'_blank',rel:'noopener noreferrer'}
-  });
-  const prepare=make('button',{className:'button button-small',text:'Prepare application pack'});
-  prepare.type='button';
-  prepare.addEventListener('click',()=>{
+  }));
+
+  const ai=make('button',{className:'button button-small',text:'AI role-specific CV'});
+  ai.type='button';
+  ai.addEventListener('click',()=>{
     state.selectedOpportunity=item;
     applySelectedOpportunity();
     switchView('cv');
+    document.querySelector('#aiCvForm')?.scrollIntoView({behavior:'smooth'});
   });
-  actions.append(source,prepare);
+  actions.append(ai);
+
+  if(shortlistView){
+    const remove=make('button',{className:'button button-danger button-small',text:'Remove'});
+    remove.type='button';
+    remove.addEventListener('click',()=>removeFromShortlist(item.id));
+    actions.append(remove);
+  }else{
+    const row=state.shortlist.find(entry=>entry.opportunity_id===item.id);
+    const shortlistButton=make('button',{
+      className:'button button-secondary button-small',
+      text:row?'Shortlisted':'Shortlist'
+    });
+    shortlistButton.type='button';
+    shortlistButton.disabled=Boolean(row);
+    shortlistButton.addEventListener('click',()=>addToShortlist(item));
+    actions.append(shortlistButton);
+  }
+
   card.append(actions);
   return card;
 }
 
 function prettyType(type){
-  const labels={
-    job:'Job',
-    government_job:'Government job',
-    learnership:'Learnership',
-    apprenticeship:'Apprenticeship',
-    internship:'Internship',
-    bursary:'Bursary',
-    scholarship:'Scholarship',
-    study:'Study'
-  };
-  return labels[type]||type||'Opportunity';
+  return ({
+    job:'Job',government_job:'Government job',learnership:'Learnership',
+    apprenticeship:'Apprenticeship',internship:'Internship',bursary:'Bursary',
+    scholarship:'Scholarship',study:'Study'
+  })[type]||type||'Opportunity';
 }
 
 ['#opportunityTypeFilter','#opportunityProvinceFilter','#opportunitySearch'].forEach(selector=>{
   document.querySelector(selector)?.addEventListener(selector==='#opportunitySearch'?'input':'change',renderOpportunityList);
 });
 
+async function addToShortlist(item){
+  if(state.shortlist.length>=5){
+    setText('#opportunityStatus','Your shortlist already has five vacancies. Remove one before adding another.');
+    return;
+  }
+  try{
+    const rows=await dbRequest('shortlisted_opportunities',{
+      method:'POST',
+      body:{user_id:currentUserId(),opportunity_id:item.id},
+      prefer:'return=representation'
+    });
+    const row=rows?.[0];
+    if(row)state.shortlist.push({...row,opportunities:item});
+    renderShortlist();
+    renderOpportunityList();
+    renderDashboard();
+    setText('#opportunityStatus',`Added ${item.title} to your shortlist.`);
+  }catch(error){
+    const message=String(error.message||'');
+    setText('#opportunityStatus',message.includes('SHORTLIST_LIMIT_REACHED')
+      ?'Your shortlist is limited to five vacancies.'
+      :message||'Could not save shortlist item.');
+  }
+}
+
+async function removeFromShortlist(opportunityId){
+  const row=state.shortlist.find(entry=>entry.opportunity_id===opportunityId);
+  if(!row)return;
+  try{
+    await dbRequest(`shortlisted_opportunities?id=eq.${encodeURIComponent(row.id)}`,{method:'DELETE'});
+    state.shortlist=state.shortlist.filter(entry=>entry.id!==row.id);
+    renderShortlist();
+    renderOpportunityList();
+    renderDashboard();
+  }catch(error){
+    setText('#shortlistStatus',error.message||'Could not remove shortlist item.');
+  }
+}
+
+function renderShortlist(){
+  const list=document.querySelector('#shortlistList');
+  const status=document.querySelector('#shortlistStatus');
+  if(!list||!status)return;
+  clear(list);
+  setText('#shortlistCount',`${state.shortlist.length} / 5 saved`);
+  if(!state.shortlist.length){
+    status.textContent='No vacancies shortlisted yet.';
+    list.append(make('div',{className:'empty-state',text:'Use the Shortlist button in Opportunities to save up to five priority vacancies.'}));
+    return;
+  }
+  status.textContent='Shortlisted vacancies are kept even if a later refresh closes the listing, so your application history is preserved.';
+  state.shortlist.forEach(entry=>{
+    const item=entry.opportunities||state.opportunities.find(op=>op.id===entry.opportunity_id);
+    if(item)list.append(buildOpportunityCard(item,{shortlistView:true}));
+  });
+}
+
+/* Study and dashboard */
 function renderStudyList(){
   const list=document.querySelector('#studyList');
   if(!list)return;
@@ -674,183 +1256,300 @@ function renderStudyList(){
   items.forEach(item=>list.append(buildOpportunityCard(item)));
 }
 
+function renderDashboard(){
+  const profile=state.profile||{};
+  const required=[profile.full_name,profile.phone,profile.city,profile.province,profile.headline,profile.summary];
+  const profileBase=Math.round(required.filter(Boolean).length/required.length*70);
+  const evidenceBonus=Math.min(30,(state.experience.length?10:0)+(state.education.length?10:0)+(state.skills.length?10:0));
+  setText('#statProfile',`${Math.min(100,profileBase+evidenceBonus)}%`);
+  setText('#statOpportunities',String(state.opportunities.length));
+  setText('#statShortlist',`${state.shortlist.length} / 5`);
+  const deadlines=state.opportunities
+    .filter(item=>item.closing_date&&!isExpired(item))
+    .map(item=>new Date(item.closing_date)).sort((a,b)=>a-b);
+  setText('#statDeadline',deadlines.length?formatDate(deadlines[0]):'No dated deadline');
+
+  const pulse=document.querySelector('#researchPulse');
+  if(!pulse)return;
+  clear(pulse);
+  const recent=[...state.opportunities]
+    .sort((a,b)=>new Date(b.verified_at||0)-new Date(a.verified_at||0))
+    .slice(0,4);
+  if(!recent.length){
+    pulse.append(make('p',{className:'muted',text:'No verified opportunity research has been loaded yet.'}));
+    return;
+  }
+  recent.forEach(item=>{
+    const row=make('button',{className:'research-row'});
+    row.type='button';
+    row.append(make('strong',{text:item.title}),make('span',{text:`${item.organization} • verified ${formatDateTime(item.verified_at)}`}));
+    row.addEventListener('click',()=>{
+      switchView('jobs');
+      document.querySelector(`[data-opportunity-id="${item.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
+    });
+    pulse.append(row);
+  });
+}
+
+/* AI CV generation */
+function populateAiVacancySelect(){
+  const select=document.querySelector('#aiVacancySelect');
+  if(!select)return;
+  const current=select.value;
+  [...select.querySelectorAll('option')].slice(1).forEach(option=>option.remove());
+  state.opportunities.forEach(item=>{
+    const option=make('option',{text:`${item.title} — ${item.organization}`});
+    option.value=item.id;
+    select.append(option);
+  });
+  if(current&&state.opportunities.some(item=>item.id===current))select.value=current;
+}
+
+document.querySelector('#aiVacancySelect')?.addEventListener('change',event=>{
+  const id=event.currentTarget.value;
+  state.selectedOpportunity=state.opportunities.find(item=>item.id===id)||null;
+  applySelectedOpportunity();
+});
+
 function applySelectedOpportunity(){
   const note=document.querySelector('#selectedOpportunityNote');
-  const target=document.querySelector('#cvTarget');
-  const mode=document.querySelector('#cvMode');
+  const select=document.querySelector('#aiVacancySelect');
   if(!state.selectedOpportunity){
     if(note)note.hidden=true;
     return;
   }
-  if(target)target.value=state.selectedOpportunity.title||'';
-  if(mode)mode.value='job';
+  if(select)select.value=state.selectedOpportunity.id;
   if(note){
     note.hidden=false;
-    note.textContent=`Selected: ${state.selectedOpportunity.title} — ${state.selectedOpportunity.organization}. Official source was last verified ${formatDateTime(state.selectedOpportunity.verified_at)}.`;
+    note.textContent=`Selected: ${state.selectedOpportunity.title} — ${state.selectedOpportunity.organization}. Official source verified ${formatDateTime(state.selectedOpportunity.verified_at)}.`;
   }
 }
 
-function buildCvMarkdown({mode,target,extra}){
-  const profile=state.profile||{};
-  const lines=[];
-  lines.push(profile.full_name||'Candidate name not yet provided');
-  if(profile.headline)lines.push(profile.headline);
-  lines.push('');
-  lines.push('CONTACT');
-  lines.push([currentEmail(),profile.phone,profile.city,profile.province].filter(Boolean).join(' | '));
-  lines.push('');
-  lines.push('PROFESSIONAL PROFILE');
-  lines.push(profile.summary||'Profile summary not yet provided. Add evidence before finalising this CV.');
-  lines.push('');
-  if(mode==='job'&&target){
-    lines.push(`TARGET ROLE: ${target}`);
-    lines.push('');
+async function generateAiCv({opportunityId,prompt,savePack=false}){
+  await saveCvDraft();
+  const result=await functionRequest('generate-cv',{
+    opportunity_id:opportunityId||null,
+    prompt:prompt||'Create a truthful ATS-friendly CV using my saved evidence.',
+    target_roles:selectionValues('roles'),
+    strengths:selectionValues('strengths'),
+    skills:selectionValues('skills')
+  });
+  if(savePack){
+    await persistGeneratedPack(result,opportunityId||null);
   }
-  if(state.experience.length){
-    lines.push('EXPERIENCE');
-    state.experience.forEach(item=>{
-      lines.push(`${item.job_title} — ${item.employer}`);
-      if(item.description)lines.push(item.description);
-      lines.push('');
-    });
-  }
-  if(state.education.length){
-    lines.push('EDUCATION');
-    state.education.forEach(item=>{
-      lines.push(`${item.qualification} — ${item.institution}`);
-      if(item.field_of_study)lines.push(item.field_of_study);
-      lines.push('');
-    });
-  }
-  if(state.skills.length){
-    lines.push('SKILLS WITH EVIDENCE');
-    state.skills.forEach(item=>{
-      lines.push(`• ${item.skill_name}${item.evidence?` — ${item.evidence}`:''}`);
-    });
-    lines.push('');
-  }
-  if(extra){
-    lines.push('ADDITIONAL VERIFIED EVIDENCE');
-    lines.push(extra);
-    lines.push('');
-  }
-  if(mode==='matriculant'&&!state.education.length){
-    lines.push('MATRICULANT NOTE');
-    lines.push('Add school, subjects, results, projects, leadership, volunteering and practical skills before finalising.');
-  }
-  return lines.join('\n').trim();
+  return result;
 }
 
-function buildPackPayload({mode,target,extra}){
-  const opportunity=state.selectedOpportunity;
-  const cv=buildCvMarkdown({mode,target,extra});
-  const candidateName=state.profile?.full_name||'Applicant';
-  const organisation=opportunity?.organization||'the organisation';
-  const warnings=[];
-  if(!state.profile?.full_name)warnings.push('Full name is missing.');
-  if(!state.profile?.summary)warnings.push('Professional summary is missing.');
-  if(!state.experience.length&&!state.education.length)warnings.push('Experience and education evidence are both empty.');
-  if(opportunity?.requirements&&Object.keys(opportunity.requirements).length){
-    warnings.push('Re-check every mandatory requirement on the official source before applying.');
-  }
-  const checklist=[
-    'Review the official source and closing date',
-    'Confirm every mandatory requirement against your evidence',
-    'Check CV dates, titles and contact details',
-    'Prepare only the supporting documents requested by the provider',
-    'Record the real submission confirmation in CareerLaunch after you apply'
-  ];
-  const steps=[
-    'Open the official source',
-    'Compare mandatory criteria with your saved evidence',
-    'Review the tailored CV and cover letter',
-    'Upload or send documents through the official route',
-    'Return to CareerLaunch and update the tracker only after the real submission'
-  ];
-  const coverLetter=[
-    `Dear Hiring Team at ${organisation},`,
-    '',
-    `I am applying for ${target||'the advertised opportunity'}. This draft is intentionally limited to evidence saved in my CareerLaunch profile and should be reviewed before submission.`,
-    '',
-    state.profile?.summary||'Add a truthful summary explaining your fit for this opportunity.',
-    '',
-    'Kind regards,',
-    candidateName
-  ].join('\n');
-  return {
-    user_id:currentUserId(),
-    opportunity_id:opportunity?.id||null,
-    version:1,
-    cv_markdown:cv,
-    cover_letter_markdown:coverLetter,
-    email_subject:opportunity?`Application: ${opportunity.title}${opportunity.reference_number?` — ${opportunity.reference_number}`:''}`:`CareerLaunch application — ${target||'general opportunity'}`,
-    email_body:`Dear Hiring Team,\n\nPlease find my application for ${target||'the advertised opportunity'} attached. Please refer to the attached documents for my verified experience and qualifications.\n\nKind regards,\n${candidateName}`,
-    application_steps:steps,
-    checklist,
-    warnings
-  };
-}
-
-document.querySelector('#cvForm')?.addEventListener('submit',async event=>{
+document.querySelector('#aiCvForm')?.addEventListener('submit',async event=>{
   event.preventDefault();
-  const mode=document.querySelector('#cvMode')?.value||'general';
-  const target=document.querySelector('#cvTarget')?.value.trim()||'General opportunity';
-  const extra=document.querySelector('#cvExtraEvidence')?.value.trim()||'';
-  const result=document.querySelector('#cvResult');
-  const preview=document.querySelector('#cvPreview');
-  const payload=buildPackPayload({mode,target,extra});
-
-  result.textContent='Building and saving your evidence-based application pack…';
+  const output=document.querySelector('#aiCvResult');
+  const button=event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled=true;
+  output.textContent='Generating a role-specific CV from your saved evidence…';
   try{
-    const saved=await dbRequest('application_packs',{
-      method:'POST',
-      body:payload,
-      prefer:'return=representation'
+    const opportunityId=document.querySelector('#aiVacancySelect')?.value||null;
+    const result=await generateAiCv({
+      opportunityId,
+      prompt:document.querySelector('#aiPrompt')?.value.trim()||''
     });
-    const pack=saved?.[0];
-    if(!pack?.id)throw new Error('Application pack was not returned after saving.');
-
-    const appRows=await dbRequest('applications',{
-      method:'POST',
-      body:{
-        user_id:currentUserId(),
-        opportunity_id:payload.opportunity_id,
-        application_pack_id:pack.id,
-        status:'draft',
-        next_action:'Review the official source and compare every mandatory requirement before submission.'
-      },
-      prefer:'return=representation'
-    });
-    state.applications=[...(appRows||[]),...state.applications];
-
-    clear(preview);
-    preview.append(
-      make('h3',{text:`CV preview — ${target}`}),
-      make('pre',{text:payload.cv_markdown}),
-      make('h3',{text:'Cover letter draft'}),
-      make('pre',{text:payload.cover_letter_markdown}),
-      make('h3',{text:'Application checklist'})
-    );
-    const list=make('ul');
-    payload.checklist.forEach(item=>list.append(make('li',{text:item})));
-    preview.append(list);
-    if(payload.warnings.length){
-      const warning=make('div',{className:'warning-box'});
-      warning.append(make('strong',{text:'Evidence warnings'}));
-      const warningList=make('ul');
-      payload.warnings.forEach(item=>warningList.append(make('li',{text:item})));
-      warning.append(warningList);
-      preview.append(warning);
-    }
-    preview.hidden=false;
-    result.textContent='Application pack saved as a draft. It has not been submitted anywhere.';
-    renderApplications();
-    renderDashboard();
+    state.generatedAi={...result,opportunity_id:opportunityId};
+    renderAiPreview();
+    output.textContent='AI draft generated. Review every fact before saving or applying.';
   }catch(error){
-    result.textContent=error.message||'Could not save the application pack.';
+    output.textContent=error.message||'AI CV generation is unavailable right now.';
+  }finally{
+    button.disabled=false;
   }
 });
 
+function renderAiPreview(){
+  const preview=document.querySelector('#aiCvPreview');
+  if(!preview||!state.generatedAi)return;
+  clear(preview);
+  preview.append(make('h3',{text:'AI-generated CV draft'}),make('pre',{text:state.generatedAi.cv_markdown||''}));
+  if(state.generatedAi.cover_letter_markdown){
+    preview.append(make('h3',{text:'Cover letter draft'}),make('pre',{text:state.generatedAi.cover_letter_markdown}));
+  }
+  if(state.generatedAi.warnings?.length){
+    const warning=make('div',{className:'warning-box'});
+    warning.append(make('strong',{text:'Review warnings'}));
+    const ul=make('ul');
+    state.generatedAi.warnings.forEach(item=>ul.append(make('li',{text:item})));
+    warning.append(ul);
+    preview.append(warning);
+  }
+  preview.hidden=false;
+  document.querySelector('#aiExportActions').hidden=false;
+}
+
+async function persistGeneratedPack(generated,opportunityId){
+  const rows=await dbRequest('application_packs',{
+    method:'POST',
+    body:{
+      user_id:currentUserId(),
+      opportunity_id:opportunityId||null,
+      version:1,
+      cv_markdown:generated.cv_markdown||'',
+      cover_letter_markdown:generated.cover_letter_markdown||'',
+      email_subject:generated.email_subject||'',
+      email_body:generated.email_body||'',
+      checklist:generated.checklist||[],
+      warnings:generated.warnings||[],
+      application_steps:[
+        'Open the official source',
+        'Re-check the vacancy requirements',
+        'Review the generated CV against your real evidence',
+        'Submit through the official route',
+        'Update CareerLaunch only after the real submission'
+      ]
+    },
+    prefer:'return=representation'
+  });
+  const pack=rows?.[0];
+  if(pack?.id){
+    const apps=await dbRequest('applications',{
+      method:'POST',
+      body:{
+        user_id:currentUserId(),
+        opportunity_id:opportunityId||null,
+        application_pack_id:pack.id,
+        status:'draft',
+        next_action:'Review the AI-generated pack and official vacancy requirements before submission.'
+      },
+      prefer:'return=representation'
+    });
+    state.applications=[...(apps||[]),...state.applications];
+    renderApplications();
+  }
+  return pack;
+}
+
+document.querySelector('#saveAiPack')?.addEventListener('click',async()=>{
+  const output=document.querySelector('#aiCvResult');
+  if(!state.generatedAi){
+    output.textContent='Generate an AI CV first.';
+    return;
+  }
+  try{
+    await persistGeneratedPack(state.generatedAi,state.generatedAi.opportunity_id||null);
+    output.textContent='AI application pack saved to CareerLaunch. It has not been submitted anywhere.';
+    renderDashboard();
+  }catch(error){
+    output.textContent=error.message||'Could not save the application pack.';
+  }
+});
+
+document.querySelector('#generateShortlistCvs')?.addEventListener('click',async event=>{
+  const button=event.currentTarget;
+  const status=document.querySelector('#shortlistStatus');
+  if(!state.shortlist.length){
+    status.textContent='Add vacancies to your shortlist first.';
+    return;
+  }
+  button.disabled=true;
+  let completed=0;
+  const failures=[];
+  try{
+    for(const entry of state.shortlist){
+      const item=entry.opportunities||state.opportunities.find(op=>op.id===entry.opportunity_id);
+      if(!item)continue;
+      status.textContent=`Generating ${completed+1} of ${state.shortlist.length}: ${item.title}…`;
+      try{
+        await generateAiCv({
+          opportunityId:item.id,
+          prompt:`Create a role-specific ATS-friendly CV for ${item.title} at ${item.organization}. Use only my verified evidence and flag missing requirements.`,
+          savePack:true
+        });
+        completed++;
+      }catch(error){
+        failures.push(`${item.title}: ${error.message}`);
+      }
+    }
+    status.textContent=failures.length
+      ?`Generated and saved ${completed} CV pack(s). ${failures.length} could not be generated: ${failures.join(' | ')}`
+      :`Generated and saved ${completed} role-specific CV pack(s). Review each before applying.`;
+    renderDashboard();
+  }finally{
+    button.disabled=false;
+  }
+});
+
+/* Export */
+function printableHtml(text){
+  return `<!doctype html><html><head><meta charset="utf-8"><title>CareerLaunch CV</title><style>body{font-family:Arial,sans-serif;max-width:820px;margin:40px auto;padding:0 24px;color:#111}pre{font-family:Arial,sans-serif;white-space:pre-wrap;line-height:1.5;font-size:12pt}@media print{body{margin:0;max-width:none}}</style></head><body><pre>${escapeHtml(text)}</pre><script>window.onload=()=>{window.print();}</script></body></html>`;
+}
+
+function escapeHtml(value){
+  return String(value||'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  })[char]);
+}
+
+function printPdf(text){
+  const win=window.open('','_blank');
+  if(!win){
+    alert('Allow pop-ups to open the Save as PDF / print screen.');
+    return;
+  }
+  win.document.open();
+  win.document.write(printableHtml(text));
+  win.document.close();
+}
+
+function xmlEscape(value){
+  return String(value||'').replace(/[<>&"']/g,char=>({
+    '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'
+  })[char]);
+}
+
+async function downloadDocx(text,fileName='CareerLaunch-CV.docx'){
+  if(!window.JSZip)throw new Error('DOCX export library has not loaded yet. Check your connection and try again.');
+  const zip=new window.JSZip();
+  zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+  zip.folder('_rels').file('.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+  const paragraphs=String(text||'').split('\n').map(line=>
+    `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r></w:p>`
+  ).join('');
+  zip.folder('word').file('document.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraphs}<w:sectPr/></w:body></w:document>`);
+  const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  downloadBlob(blob,fileName);
+}
+
+function downloadBlob(blob,fileName){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=fileName;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+document.querySelector('#saveManualPdf')?.addEventListener('click',()=>printPdf(state.manualPreviewText||buildManualCvText()));
+document.querySelector('#saveManualDocx')?.addEventListener('click',async()=>{
+  try{ await downloadDocx(state.manualPreviewText||buildManualCvText(),'CareerLaunch-Manual-CV.docx'); }
+  catch(error){ setText('#manualCvResult',error.message); }
+});
+document.querySelector('#saveAiPdf')?.addEventListener('click',()=>{
+  if(state.generatedAi?.cv_markdown)printPdf(state.generatedAi.cv_markdown);
+});
+document.querySelector('#saveAiDocx')?.addEventListener('click',async()=>{
+  if(!state.generatedAi?.cv_markdown)return;
+  try{ await downloadDocx(state.generatedAi.cv_markdown,'CareerLaunch-AI-CV.docx'); }
+  catch(error){ setText('#aiCvResult',error.message); }
+});
+
+/* Applications */
 function renderApplications(){
   const list=document.querySelector('#applicationList');
   const status=document.querySelector('#applicationStatus');
@@ -888,17 +1587,18 @@ function renderApplications(){
     save.addEventListener('click',async()=>{
       save.disabled=true;
       try{
+        const patch={
+          status:select.value,
+          updated_at:new Date().toISOString(),
+          submitted_at:select.value==='submitted'?(app.submitted_at||new Date().toISOString()):app.submitted_at
+        };
         const updated=await dbRequest(`applications?id=eq.${encodeURIComponent(app.id)}`,{
-          method:'PATCH',
-          body:{status:select.value,updated_at:new Date().toISOString()},
-          prefer:'return=representation'
+          method:'PATCH',body:patch,prefer:'return=representation'
         });
-        Object.assign(app,updated?.[0]||{status:select.value});
+        Object.assign(app,updated?.[0]||patch);
         save.textContent='Saved';
-        renderDashboard();
       }catch(error){
         save.textContent='Try again';
-        alert(error.message||'Could not update tracker.');
       }finally{
         save.disabled=false;
       }
@@ -916,16 +1616,6 @@ function renderApplications(){
   });
 }
 
-const publicSearch=document.querySelector('#demoSearch');
-publicSearch?.addEventListener('click',()=>{
-  const goal=document.querySelector('#goal')?.value||'Opportunities';
-  const result=document.querySelector('#searchResult');
-  if(result)result.textContent=`${goal} selected. Sign in to browse verified live research and create an application pack.`;
-  document.querySelector('#account')?.scrollIntoView({behavior:'smooth'});
-});
-
 (async()=>{
-  if(await ensureSession()){
-    await enterApp();
-  }
+  if(await ensureSession())await enterApp();
 })();
