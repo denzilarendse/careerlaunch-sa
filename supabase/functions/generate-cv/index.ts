@@ -18,6 +18,199 @@ function clip(value: unknown, max = 12000) {
   return String(value ?? "").slice(0, max);
 }
 
+
+function cleanList(value: unknown, max = 40) {
+  return Array.isArray(value)
+    ? value.map((item) => clip(item, 500).trim()).filter(Boolean).slice(0, max)
+    : [];
+}
+
+function uniqueList(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function recordOf(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function buildStructuredFallback(evidence: Record<string, unknown>, reason: string) {
+  const profile = recordOf(evidence.profile);
+  const manual = recordOf(evidence.manual_cv);
+  const opportunity = recordOf(evidence.selected_opportunity);
+  const experience = Array.isArray(evidence.experience)
+    ? evidence.experience.map(recordOf)
+    : [];
+  const education = Array.isArray(evidence.education)
+    ? evidence.education.map(recordOf)
+    : [];
+  const storedSkills = Array.isArray(evidence.skills)
+    ? evidence.skills.map(recordOf)
+    : [];
+
+  const fullName = clip(manual.full_name || profile.full_name, 200).trim();
+  const email = clip(manual.email || profile.email, 320).trim();
+  const phone = clip(manual.phone || profile.phone, 80).trim();
+  const altPhone = clip(manual.alternative_phone || profile.alternative_phone, 80).trim();
+  const location = clip(
+    manual.location ||
+      [profile.city, profile.province].map((v) => clip(v, 120).trim()).filter(Boolean).join(", "),
+    300,
+  ).trim();
+  const address = clip(manual.address || profile.address_text, 500).trim();
+  const summary = clip(manual.professional_summary || profile.summary, 3000).trim();
+
+  const targetRoles = uniqueList([
+    ...cleanList(manual.target_roles, 10),
+    ...cleanList(evidence.selected_target_roles, 10),
+  ]);
+  const targetRole = clip(opportunity.title || targetRoles[0], 240).trim();
+  const organization = clip(opportunity.organization, 240).trim();
+
+  const selectedSkills = uniqueList([
+    ...cleanList(manual.core_skills, 40),
+    ...cleanList(manual.skills, 40),
+    ...cleanList(evidence.selected_skills, 40),
+    ...storedSkills.map((item) => clip(item.skill_name, 200).trim()).filter(Boolean),
+  ]);
+  const strengths = uniqueList([
+    ...cleanList(manual.strengths, 30),
+    ...cleanList(evidence.selected_strengths, 30),
+  ]);
+  const languages = uniqueList([
+    ...cleanList(manual.languages, 20),
+    ...cleanList(profile.languages, 20),
+  ]);
+
+  const cv: string[] = [];
+  cv.push(fullName ? `# ${fullName}` : "# Curriculum Vitae");
+  const contacts = [
+    email,
+    phone,
+    altPhone ? `Alternative: ${altPhone}` : "",
+    location,
+    address,
+  ].filter(Boolean);
+  if (contacts.length) {
+    cv.push("", "## Contact Details", ...contacts);
+  }
+
+  if (summary || targetRole) {
+    cv.push("", "## Professional Summary");
+    cv.push(summary || `Career focus: ${targetRole}.`);
+  }
+
+  if (experience.length) {
+    cv.push("", "## Work Experience");
+    for (const item of experience) {
+      const role = clip(item.job_title, 240).trim() || "Role";
+      const employer = clip(item.employer, 240).trim();
+      const dates = [item.start_date, item.end_date].map((v) => clip(v, 80).trim()).filter(Boolean).join(" – ");
+      cv.push(`### ${role}${employer ? ` — ${employer}` : ""}${dates ? ` (${dates})` : ""}`);
+      const itemLocation = clip(item.location, 240).trim();
+      if (itemLocation) cv.push(itemLocation);
+      const description = clip(item.description, 6000).trim();
+      if (description) cv.push(description);
+      for (const achievement of cleanList(item.achievements, 20)) cv.push(`- ${achievement}`);
+    }
+  } else {
+    const notes = clip(manual.experience_notes, 6000).trim();
+    if (notes) cv.push("", "## Projects / Volunteering / Responsibilities", notes);
+  }
+
+  if (education.length) {
+    cv.push("", "## Education");
+    for (const item of education) {
+      const qualification = clip(item.qualification, 300).trim() || "Qualification";
+      const institution = clip(item.institution, 300).trim();
+      cv.push(`### ${qualification}${institution ? ` — ${institution}` : ""}`);
+      const field = clip(item.field_of_study, 300).trim();
+      if (field) cv.push(field);
+      const subjects = cleanList(item.subjects, 30);
+      if (subjects.length) cv.push(`Subjects: ${subjects.join(", ")}`);
+      const result = clip(item.result_summary, 1000).trim();
+      if (result) cv.push(result);
+    }
+  }
+
+  if (selectedSkills.length) cv.push("", "## Core Skills", ...selectedSkills.map((item) => `- ${item}`));
+  if (strengths.length) cv.push("", "## Strengths", ...strengths.map((item) => `- ${item}`));
+  if (languages.length) cv.push("", "## Languages", ...languages.map((item) => `- ${item}`));
+
+  const availability = clip(manual.availability || profile.availability, 500).trim();
+  if (availability) cv.push("", "## Availability", availability);
+
+  const referenceValues = Array.isArray(manual.references)
+    ? manual.references.map((item) => typeof item === "string" ? item : clip(recordOf(item).text, 500)).filter(Boolean)
+    : Array.isArray(profile.references)
+      ? profile.references.map((item) => typeof item === "string" ? item : clip(recordOf(item).text, 500)).filter(Boolean)
+      : [];
+  if (referenceValues.length) cv.push("", "## References", ...referenceValues);
+
+  const warnings = [
+    reason,
+    !fullName ? "Add your full name before submitting this CV." : "",
+    !email && !phone ? "Add at least one reliable contact method before submitting." : "",
+    !experience.length ? "No formal work experience is currently stored; the draft does not invent any." : "",
+    !education.length ? "No education record is currently stored." : "",
+    Array.isArray(evidence.uploaded_documents) && evidence.uploaded_documents.length
+      ? "Uploaded documents were not automatically interpreted by the structured fallback. Review and add any factual details you want included."
+      : "",
+  ].filter(Boolean);
+
+  const targetLabel = targetRole
+    ? `${targetRole}${organization ? ` at ${organization}` : ""}`
+    : "the advertised opportunity";
+  const salutation = "Dear Hiring Team,";
+  const cover = [
+    salutation,
+    "",
+    `I am applying for ${targetLabel}.`,
+    "",
+    "My attached CV presents the education, experience and skills that I have provided to CareerLaunch SA. I have kept the application factual and have not added qualifications or experience that are not in my record.",
+    "",
+    "I would welcome the opportunity to discuss my application further. Thank you for considering my application.",
+    "",
+    fullName ? `Kind regards,\n${fullName}` : "Kind regards",
+  ].join("\n");
+
+  const subject = targetRole
+    ? `Application: ${targetRole}${fullName ? ` — ${fullName}` : ""}`
+    : `Job application${fullName ? ` — ${fullName}` : ""}`;
+  const emailBody = [
+    "Dear Hiring Team,",
+    "",
+    `Please find attached my application for ${targetLabel}.`,
+    "My CV and supporting application material are included for your consideration.",
+    "",
+    "Kind regards,",
+    fullName,
+    phone,
+    email,
+  ].filter((line, index, arr) => line !== "" || arr[index - 1] !== "").join("\n").trim();
+
+  return {
+    generation_mode: "structured_fallback",
+    cv_markdown: cv.join("\n").trim(),
+    cover_letter_markdown: cover,
+    email_subject: subject,
+    email_body: emailBody,
+    checklist: [
+      "Open the official vacancy source and confirm the closing date and reference number.",
+      "Review every CV statement against your real documents and experience.",
+      "Check all mandatory qualifications, licences and experience before submitting.",
+      "Attach only the documents requested by the employer.",
+      "Submit through the official application route and keep proof of submission.",
+    ],
+    warnings,
+    match_notes: [
+      targetRole ? `Draft prepared for: ${targetLabel}.` : "No specific vacancy was selected.",
+      "This structured fallback does not infer missing facts or silently copy employer requirements into your CV.",
+    ],
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
@@ -119,10 +312,10 @@ Deno.serve(async (req: Request) => {
   const model = Deno.env.get("CAREERLAUNCH_AI_MODEL");
 
   if (!apiUrl || !apiKey || !model) {
-    return json({
-      error: "AI_NOT_CONFIGURED",
-      message: "CareerLaunch AI is ready but its server-side AI provider has not been configured yet.",
-    }, 503);
+    return json(buildStructuredFallback(
+      evidence as Record<string, unknown>,
+      "The external AI provider is not configured, so CareerLaunch generated a structured evidence-only draft instead."
+    ));
   }
 
   const systemPrompt = `You are CareerLaunch SA's CV drafting engine.
@@ -193,24 +386,32 @@ match_notes (array of strings).`;
 
   const raw = await aiResponse.json().catch(() => null);
   if (!aiResponse.ok) {
-    return json({
-      error: "AI_PROVIDER_ERROR",
-      status: aiResponse.status,
-      message: "The AI provider could not generate the CV right now.",
-    }, 502);
+    return json(buildStructuredFallback(
+      evidence as Record<string, unknown>,
+      `The AI provider was unavailable (status ${aiResponse.status}), so CareerLaunch generated a structured evidence-only draft instead.`
+    ));
   }
 
   const content = raw?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") return json({ error: "AI_RESPONSE_INVALID" }, 502);
+  if (typeof content !== "string") {
+    return json(buildStructuredFallback(
+      evidence as Record<string, unknown>,
+      "The AI provider returned an invalid response, so CareerLaunch generated a structured evidence-only draft instead."
+    ));
+  }
 
   let generated: Record<string, unknown>;
   try {
     generated = JSON.parse(content);
   } catch {
-    return json({ error: "AI_RESPONSE_NOT_JSON" }, 502);
+    return json(buildStructuredFallback(
+      evidence as Record<string, unknown>,
+      "The AI provider response could not be parsed, so CareerLaunch generated a structured evidence-only draft instead."
+    ));
   }
 
   const safe = {
+    generation_mode: "ai_provider",
     cv_markdown: clip(generated.cv_markdown, 40000),
     cover_letter_markdown: clip(generated.cover_letter_markdown, 20000),
     email_subject: clip(generated.email_subject, 500),
