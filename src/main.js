@@ -4,6 +4,7 @@ import {
   SKILL_OPTIONS,
   OFO_SOURCE_NOTE
 } from './career-options.js';
+import { MAJOR_JOB_SITES, APPLICATION_FORMS } from './resource-catalog.js';
 
 const SESSION_KEY='careerlaunch_session';
 const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs';
@@ -19,11 +20,15 @@ const state={
   applications:[],
   shortlist:[],
   documents:[],
+  packs:[],
   cvDraft:null,
   selectedOpportunity:null,
   generatedAi:null,
   manualPreviewText:'',
+  aiConversation:[],
+  libraryFilter:'cvs',
   selections:{
+    profileRoles:[],
     roles:[],
     strengths:[],
     skills:[]
@@ -249,10 +254,12 @@ async function leaveApp(){
     applications:[],
     shortlist:[],
     documents:[],
+    packs:[],
     cvDraft:null,
     selectedOpportunity:null,
     generatedAi:null,
-    manualPreviewText:''
+    manualPreviewText:'',
+    aiConversation:[]
   });
   const shell=document.querySelector('#appShell');
   if(shell)shell.hidden=true;
@@ -360,6 +367,7 @@ async function loadWorkspaceData(){
       loadApplications(),
       loadShortlist(),
       loadDocuments(),
+      loadApplicationPacks(),
       loadCvDraft()
     ]);
     renderAll();
@@ -417,6 +425,14 @@ async function loadDocuments(){
   )||[];
 }
 
+async function loadApplicationPacks(){
+  const userId=currentUserId();
+  if(!userId)return;
+  state.packs=await dbRequest(
+    `application_packs?select=*&user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`
+  )||[];
+}
+
 async function loadCvDraft(){
   const userId=currentUserId();
   if(!userId)return;
@@ -438,6 +454,10 @@ function renderAll(){
   renderApplications();
   renderShortlist();
   renderDocuments();
+  renderJobSites();
+  renderLibrary();
+  renderApplicationForms();
+  renderAiConversation();
   renderDashboard();
   populateAiVacancySelect();
 }
@@ -452,13 +472,20 @@ function hydrateProfileForm(){
     profileCity:profile.city||'',
     profileProvince:profile.province||'',
     profileAddress:profile.address_text||'',
-    profileHeadline:profile.headline||'',
     profileSummary:profile.summary||''
   };
   Object.entries(values).forEach(([id,value])=>{
     const field=document.getElementById(id);
     if(field)field.value=value;
   });
+  const storedRoles=Array.isArray(profile.cv_builder_state?.profile_roles)
+    ?profile.cv_builder_state.profile_roles
+    :profile.headline?[profile.headline]:[];
+  state.selections.profileRoles=[...storedRoles];
+  profileRoleMulti?.renderChips();
+  setValue('#profileRoleOther',profile.cv_builder_state?.profile_other_role||'');
+  const profileOtherWrap=document.querySelector('#profileRoleOtherWrap');
+  if(profileOtherWrap)profileOtherWrap.hidden=!profile.cv_builder_state?.profile_other_role;
   const matric=document.querySelector('#profileMatriculant');
   if(matric)matric.checked=Boolean(profile.is_matriculant);
 }
@@ -483,9 +510,14 @@ document.querySelector('#profileForm')?.addEventListener('submit',async event=>{
     province:document.querySelector('#profileProvince')?.value||null,
     country:'South Africa',
     address_text:valueOrNull('#profileAddress'),
-    headline:valueOrNull('#profileHeadline'),
+    headline:selectionValues('profileRoles').join(' / ')||null,
     summary:valueOrNull('#profileSummary'),
     is_matriculant:Boolean(document.querySelector('#profileMatriculant')?.checked),
+    cv_builder_state:{
+      ...(state.profile?.cv_builder_state||{}),
+      profile_roles:selectionValues('profileRoles'),
+      profile_other_role:valueOrNull('#profileRoleOther')
+    },
     updated_at:new Date().toISOString()
   };
   try{
@@ -510,18 +542,28 @@ function valueOrNull(selector){
 
 /* Evidence records */
 function renderEvidenceLists(){
-  renderRecords('#experienceList',state.experience,item=>[item.job_title,item.employer,item.description]);
-  renderRecords('#educationList',state.education,item=>[item.qualification,item.institution,item.field_of_study]);
-  renderRecords('#skillList',state.skills,item=>[item.skill_name,item.evidence]);
-  renderRecords('#manualExperienceList',state.experience,item=>[item.job_title,item.employer,item.description]);
+  renderRecords('#experienceList',state.experience,item=>[item.job_title,item.employer,item.description],{
+    table:'candidate_experience',stateKey:'experience',label:'experience'
+  });
+  renderRecords('#educationList',state.education,item=>[item.qualification,item.institution,item.field_of_study],{
+    table:'candidate_education',stateKey:'education',label:'education'
+  });
+  renderRecords('#skillList',state.skills,item=>[item.skill_name,item.evidence],{
+    table:'candidate_skills',stateKey:'skills',label:'skill / evidence'
+  });
+  renderRecords('#manualExperienceList',state.experience,item=>[item.job_title,item.employer,item.description],{
+    table:'candidate_experience',stateKey:'experience',label:'experience'
+  });
   renderRecords('#manualEducationList',state.education,item=>[
     item.qualification,
     item.institution,
     [item.field_of_study,...(item.subjects||[])].filter(Boolean).join(' • ')
-  ]);
+  ],{
+    table:'candidate_education',stateKey:'education',label:'education'
+  });
 }
 
-function renderRecords(selector,records,toLines){
+function renderRecords(selector,records,toLines,removeConfig=null){
   const container=document.querySelector(selector);
   if(!container)return;
   clear(container);
@@ -531,11 +573,33 @@ function renderRecords(selector,records,toLines){
   }
   records.forEach(record=>{
     const card=make('article',{className:'mini-record'});
+    const body=make('div',{className:'mini-record-body'});
     toLines(record).filter(Boolean).forEach((line,index)=>{
-      card.append(make(index===0?'strong':'span',{text:String(line)}));
+      body.append(make(index===0?'strong':'span',{text:String(line)}));
     });
+    card.append(body);
+    if(removeConfig&&record.id){
+      const remove=make('button',{className:'button button-danger button-small',text:'Remove'});
+      remove.type='button';
+      remove.addEventListener('click',()=>removeOwnedRecord(removeConfig,record));
+      card.append(remove);
+    }
     container.append(card);
   });
+}
+
+async function removeOwnedRecord(config,record){
+  const label=config.label||'item';
+  if(!confirm(`Remove this ${label}? This cannot be undone.`))return;
+  try{
+    await dbRequest(`${config.table}?id=eq.${encodeURIComponent(record.id)}`,{method:'DELETE'});
+    state[config.stateKey]=state[config.stateKey].filter(item=>item.id!==record.id);
+    renderEvidenceLists();
+    renderDashboard();
+    setText('#profileResult',`Removed ${label}.`);
+  }catch(error){
+    setText('#profileResult',error.message||`Could not remove ${label}.`);
+  }
 }
 
 async function addExperience(payload){
@@ -684,6 +748,10 @@ function setupMultiSelect({key,input,menu,chips,otherWrap,otherInput,options}){
   return {renderChips};
 }
 
+const profileRoleMulti=setupMultiSelect({
+  key:'profileRoles',input:'#profileRoleSearch',menu:'#profileRoleOptions',chips:'#profileRoleChips',
+  otherWrap:'#profileRoleOtherWrap',otherInput:'#profileRoleOther',options:ROLE_OPTIONS
+});
 const roleMulti=setupMultiSelect({
   key:'roles',input:'#roleSearch',menu:'#roleOptions',chips:'#roleChips',
   otherWrap:'#roleOtherWrap',otherInput:'#roleOther',options:ROLE_OPTIONS
@@ -700,6 +768,7 @@ const skillMulti=setupMultiSelect({
 function selectionValues(key){
   const values=[...state.selections[key]];
   const otherMap={
+    profileRoles:'#profileRoleOther',
     roles:'#roleOther',
     strengths:'#strengthOther',
     skills:'#skillOtherCv'
@@ -710,6 +779,7 @@ function selectionValues(key){
 }
 
 function hydrateSelectionState(){
+  profileRoleMulti?.renderChips();
   roleMulti?.renderChips();
   strengthMulti?.renderChips();
   skillMulti?.renderChips();
@@ -754,6 +824,7 @@ function hydrateManualCv(){
 
 function buildCvDraftContent(){
   return {
+    ...(state.cvDraft?.content||{}),
     full_name:valueOrNull('#manualName'),
     email:valueOrNull('#manualEmail')||currentEmail(),
     phone:valueOrNull('#manualPhone'),
@@ -1123,8 +1194,43 @@ function renderDocuments(){
       make('span',{text:`${doc.document_type} • ${hasText?'text available to AI':'stored securely'}`}),
       make('span',{text:`Uploaded ${formatDateTime(doc.created_at)}`})
     );
+    const remove=make('button',{className:'button button-danger button-small',text:'Remove document'});
+    remove.type='button';
+    remove.addEventListener('click',()=>removeDocument(doc));
+    card.append(remove);
     list.append(card);
   });
+}
+
+async function removeDocument(doc){
+  if(!confirm(`Remove ${doc.file_name} from your CareerLaunch library?`))return;
+  const config=authConfig();
+  const session=await ensureSession();
+  if(!session?.session_token)return;
+  try{
+    if(doc.storage_path){
+      const storageResponse=await fetch(
+        `${config.SUPABASE_URL}/storage/v1/object/candidate-documents/${doc.storage_path}`,
+        {
+          method:'DELETE',
+          headers:{
+            apikey:config.SUPABASE_PUBLISHABLE_KEY,
+            Authorization:`Bearer ${session.session_token}`
+          }
+        }
+      );
+      if(!storageResponse.ok&&storageResponse.status!==404){
+        const data=await storageResponse.json().catch(()=>({}));
+        throw new Error(data?.message||'Could not remove stored document.');
+      }
+    }
+    await dbRequest(`candidate_documents?id=eq.${encodeURIComponent(doc.id)}`,{method:'DELETE'});
+    state.documents=state.documents.filter(item=>item.id!==doc.id);
+    renderDocuments();
+    renderLibrary();
+  }catch(error){
+    setText('#libraryStatus',error.message||'Could not remove document.');
+  }
 }
 
 /* Opportunities and shortlist */
@@ -1184,14 +1290,13 @@ function buildOpportunityCard(item,{shortlistView=false}={}){
     attrs:{href:item.source_url,target:'_blank',rel:'noopener noreferrer'}
   }));
 
-  const ai=make('button',{className:'button button-small',text:'AI role-specific CV'});
-  ai.type='button';
-  ai.addEventListener('click',()=>{
-    state.selectedOpportunity=item;
-    applySelectedOpportunity();
-    switchView('cv');
-    document.querySelector('#aiCvForm')?.scrollIntoView({behavior:'smooth'});
+  const isFunding=['bursary','scholarship','study','learnership','apprenticeship','internship'].includes(item.opportunity_type);
+  const ai=make('button',{
+    className:'button button-small',
+    text:isFunding?'AI application assistant':'AI role-specific CV'
   });
+  ai.type='button';
+  ai.addEventListener('click',()=>prepareAssistantForOpportunity(item));
   actions.append(ai);
 
   if(shortlistView){
@@ -1199,6 +1304,10 @@ function buildOpportunityCard(item,{shortlistView=false}={}){
     remove.type='button';
     remove.addEventListener('click',()=>removeFromShortlist(item.id));
     actions.append(remove);
+    const applied=make('button',{className:'button button-small',text:'Mark applied'});
+    applied.type='button';
+    applied.addEventListener('click',()=>markOpportunityApplied(item));
+    actions.append(applied);
   }else{
     const row=state.shortlist.find(entry=>entry.opportunity_id===item.id);
     const shortlistButton=make('button',{
@@ -1223,8 +1332,21 @@ function prettyType(type){
   })[type]||type||'Opportunity';
 }
 
-['#opportunityTypeFilter','#opportunityProvinceFilter','#opportunitySearch'].forEach(selector=>{
-  document.querySelector(selector)?.addEventListener(selector==='#opportunitySearch'?'input':'change',renderOpportunityList);
+['#opportunityTypeFilter','#opportunityProvinceFilter'].forEach(selector=>{
+  document.querySelector(selector)?.addEventListener('change',renderOpportunityList);
+});
+document.querySelector('#opportunitySearch')?.addEventListener('keydown',event=>{
+  if(event.key==='Enter'){
+    event.preventDefault();
+    renderOpportunityList();
+  }
+});
+document.querySelector('#opportunitySearchBtn')?.addEventListener('click',renderOpportunityList);
+document.querySelector('#opportunityResetBtn')?.addEventListener('click',()=>{
+  setValue('#opportunitySearch','');
+  setValue('#opportunityTypeFilter','');
+  setValue('#opportunityProvinceFilter','');
+  renderOpportunityList();
 });
 
 async function addToShortlist(item){
@@ -1266,6 +1388,52 @@ async function removeFromShortlist(opportunityId){
   }
 }
 
+async function markOpportunityApplied(item){
+  const userId=currentUserId();
+  if(!userId)return;
+  try{
+    const existing=await dbRequest(
+      `applications?select=*&user_id=eq.${encodeURIComponent(userId)}&opportunity_id=eq.${encodeURIComponent(item.id)}&order=created_at.desc&limit=1`
+    );
+    let saved;
+    if(existing?.[0]){
+      const rows=await dbRequest(`applications?id=eq.${encodeURIComponent(existing[0].id)}`,{
+        method:'PATCH',
+        body:{
+          status:'submitted',
+          submitted_at:existing[0].submitted_at||new Date().toISOString(),
+          next_action:'Wait for employer feedback and record any interview or follow-up.',
+          updated_at:new Date().toISOString()
+        },
+        prefer:'return=representation'
+      });
+      saved=rows?.[0]||existing[0];
+      state.applications=state.applications.map(app=>app.id===saved.id?saved:app);
+    }else{
+      const rows=await dbRequest('applications',{
+        method:'POST',
+        body:{
+          user_id:userId,
+          opportunity_id:item.id,
+          status:'submitted',
+          submitted_at:new Date().toISOString(),
+          next_action:'Wait for employer feedback and record any interview or follow-up.'
+        },
+        prefer:'return=representation'
+      });
+      saved=rows?.[0];
+      if(saved)state.applications=[saved,...state.applications];
+    }
+    await removeFromShortlist(item.id);
+    renderApplications();
+    renderDashboard();
+    switchView('applications');
+    setText('#applicationStatus',`Recorded your application for ${item.title}. It was removed from the shortlist.`);
+  }catch(error){
+    setText('#shortlistStatus',error.message||'Could not move this vacancy to Applications.');
+  }
+}
+
 function renderShortlist(){
   const list=document.querySelector('#shortlistList');
   const status=document.querySelector('#shortlistStatus');
@@ -1299,7 +1467,7 @@ function renderStudyList(){
 
 function renderDashboard(){
   const profile=state.profile||{};
-  const required=[profile.full_name,profile.phone,profile.city,profile.province,profile.headline,profile.summary];
+  const required=[profile.full_name,profile.phone,profile.city,profile.province,profile.headline];
   const profileBase=Math.round(required.filter(Boolean).length/required.length*70);
   const evidenceBonus=Math.min(30,(state.experience.length?10:0)+(state.education.length?10:0)+(state.skills.length?10:0));
   setText('#statProfile',`${Math.min(100,profileBase+evidenceBonus)}%`);
@@ -1331,6 +1499,137 @@ function renderDashboard(){
     pulse.append(row);
   });
 }
+
+function applicationKindForOpportunity(item){
+  if(!item)return 'job';
+  if(item.opportunity_type==='government_job')return 'government';
+  if(item.opportunity_type==='bursary')return 'bursary';
+  if(item.opportunity_type==='scholarship')return 'scholarship';
+  if(item.opportunity_type==='learnership')return 'learnership';
+  if(item.opportunity_type==='internship'||item.opportunity_type==='apprenticeship')return 'internship';
+  return 'job';
+}
+
+function prepareAssistantForOpportunity(item){
+  state.selectedOpportunity=item;
+  applySelectedOpportunity();
+  const kind=applicationKindForOpportunity(item);
+  setValue('#aiApplicationKind',kind);
+  const instruction=kind==='bursary'||kind==='scholarship'
+    ?`Help me prepare a complete funding application for ${item.title} at ${item.organization}, including a truthful motivational letter and document checklist.`
+    :kind==='government'
+      ?`Help me prepare a complete government application for ${item.title} at ${item.organization}, including my CV, cover letter and Z83 completion guidance. Do not sign or make declarations for me.`
+      :`Help me prepare a role-specific CV and application package for ${item.title} at ${item.organization}.`;
+  setValue('#aiPrompt',instruction);
+  switchView('cv');
+  document.querySelector('#aiCvAssistant')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderAiConversation(){
+  const container=document.querySelector('#aiChatMessages');
+  if(!container)return;
+  clear(container);
+  if(!state.aiConversation.length){
+    const welcome=make('article',{className:'chat-bubble assistant'});
+    welcome.append(
+      make('strong',{text:'CareerLaunch AI'}),
+      make('p',{text:'Tell me what you want to apply for. Choose a vacancy, paste an advert, add a vacancy link, or name a role. I can use your saved details or interview you from scratch.'})
+    );
+    container.append(welcome);
+    return;
+  }
+  state.aiConversation.forEach(message=>{
+    const bubble=make('article',{className:`chat-bubble ${message.role==='user'?'user':'assistant'}`});
+    bubble.append(
+      make('strong',{text:message.role==='user'?'You':'CareerLaunch AI'}),
+      make('p',{text:message.content})
+    );
+    container.append(bubble);
+  });
+  container.scrollTop=container.scrollHeight;
+}
+
+async function runAiConversation(userMessage,{restart=false}={}){
+  const output=document.querySelector('#aiCvResult');
+  const message=String(userMessage||'').trim();
+  if(restart)state.aiConversation=[];
+  if(message)state.aiConversation.push({role:'user',content:message});
+  renderAiConversation();
+  output.textContent='CareerLaunch AI is reviewing the application context…';
+  try{
+    const result=await functionRequest('generate-cv',{
+      mode:'assistant',
+      opportunity_id:document.querySelector('#aiVacancySelect')?.value||null,
+      vacancy_text:valueOrNull('#aiVacancyText')||'',
+      vacancy_url:valueOrNull('#aiVacancyUrl')||'',
+      prompt:valueOrNull('#aiPrompt')||'',
+      application_kind:document.querySelector('#aiApplicationKind')?.value||'job',
+      use_existing_details:document.querySelector('#aiDetailSource')?.value!=='fresh',
+      conversation:state.aiConversation,
+      target_roles:selectionValues('roles'),
+      strengths:selectionValues('strengths'),
+      skills:selectionValues('skills')
+    });
+    const reply=String(result.assistant_message||'Tell me anything else that should be included.').trim();
+    state.aiConversation.push({role:'assistant',content:reply});
+    if(Array.isArray(result.questions)&&result.questions.length){
+      state.aiConversation.push({
+        role:'assistant',
+        content:'Questions:\n'+result.questions.map((q,index)=>`${index+1}. ${q}`).join('\n')
+      });
+    }
+    renderAiConversation();
+    output.textContent=result.ready_to_generate
+      ?'The assistant has enough information for a draft. You can keep chatting or generate the complete package now.'
+      :'Reply to the questions above. You can generate a draft at any time; missing facts will be flagged rather than invented.';
+    return result;
+  }catch(error){
+    output.textContent=error.message||'The AI conversation could not continue.';
+    throw error;
+  }
+}
+
+document.querySelector('#aiStartConversation')?.addEventListener('click',async()=>{
+  const starter=valueOrNull('#aiPrompt')
+    ||(state.selectedOpportunity
+      ?`I want to apply for ${state.selectedOpportunity.title} at ${state.selectedOpportunity.organization}. Ask me for anything you still need.`
+      :'I want to create a professional CV and application package. Ask me for the information you need.');
+  await runAiConversation(starter,{restart:true}).catch(()=>{});
+});
+
+document.querySelector('#aiChatForm')?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const input=document.querySelector('#aiChatInput');
+  const message=input?.value?.trim();
+  if(!message)return;
+  input.value='';
+  await runAiConversation(message).catch(()=>{});
+});
+
+document.querySelector('#aiVacancyUrlBtn')?.addEventListener('click',async event=>{
+  const button=event.currentTarget;
+  const status=document.querySelector('#aiVacancyUrlStatus');
+  const url=valueOrNull('#aiVacancyUrl');
+  if(!url){
+    status.textContent='Paste a vacancy link first.';
+    return;
+  }
+  button.disabled=true;
+  status.textContent='Checking the vacancy link…';
+  try{
+    const result=await functionRequest('generate-cv',{mode:'fetch_vacancy',vacancy_url:url});
+    if(result.vacancy_text){
+      setValue('#aiVacancyText',result.vacancy_text);
+      status.textContent=`Vacancy text loaded from ${result.source_host||'the supplied link'}. Review it before generation.`;
+    }else{
+      status.textContent=result.message||'The site did not provide usable vacancy text. Paste the advert or upload it instead.';
+    }
+  }catch(error){
+    status.textContent=error.message||'CareerLaunch could not read that vacancy link. Paste or upload the advert instead.';
+  }finally{
+    button.disabled=false;
+  }
+});
 
 /* AI CV generation */
 function populateAiVacancySelect(){
@@ -1369,9 +1668,14 @@ function applySelectedOpportunity(){
 async function generateAiCv({opportunityId,prompt,savePack=false}){
   await saveCvDraft();
   const result=await functionRequest('generate-cv',{
+    mode:'generate',
     opportunity_id:opportunityId||null,
     vacancy_text:valueOrNull('#aiVacancyText')||'',
-    prompt:prompt||'Create a truthful ATS-friendly CV using my saved evidence.',
+    vacancy_url:valueOrNull('#aiVacancyUrl')||'',
+    prompt:prompt||'Create a truthful ATS-friendly application package using the evidence I provided.',
+    application_kind:document.querySelector('#aiApplicationKind')?.value||'job',
+    use_existing_details:document.querySelector('#aiDetailSource')?.value!=='fresh',
+    conversation:state.aiConversation,
     target_roles:selectionValues('roles'),
     strengths:selectionValues('strengths'),
     skills:selectionValues('skills')
@@ -1424,6 +1728,12 @@ function renderAiPreview(){
   if(state.generatedAi.cover_letter_markdown){
     preview.append(make('h3',{text:'Cover letter draft'}),make('pre',{text:state.generatedAi.cover_letter_markdown}));
   }
+  if(state.generatedAi.motivation_letter_markdown){
+    preview.append(make('h3',{text:'Motivational letter draft'}),make('pre',{text:state.generatedAi.motivation_letter_markdown}));
+  }
+  if(state.generatedAi.form_completion_markdown){
+    preview.append(make('h3',{text:'Form completion worksheet'}),make('pre',{text:state.generatedAi.form_completion_markdown}));
+  }
   if(state.generatedAi.warnings?.length){
     const warning=make('div',{className:'warning-box'});
     warning.append(make('strong',{text:'Review warnings'}));
@@ -1443,8 +1753,14 @@ async function persistGeneratedPack(generated,opportunityId){
       user_id:currentUserId(),
       opportunity_id:opportunityId||null,
       version:1,
+      title:state.selectedOpportunity
+        ?`${state.selectedOpportunity.title} — application pack`
+        :`${document.querySelector('#aiApplicationKind')?.value||'job'} application pack`,
+      pack_type:document.querySelector('#aiApplicationKind')?.value||'job',
       cv_markdown:generated.cv_markdown||'',
       cover_letter_markdown:generated.cover_letter_markdown||'',
+      motivation_letter_markdown:generated.motivation_letter_markdown||'',
+      form_completion_markdown:generated.form_completion_markdown||'',
       email_subject:generated.email_subject||'',
       email_body:generated.email_body||'',
       checklist:generated.checklist||[],
@@ -1474,6 +1790,10 @@ async function persistGeneratedPack(generated,opportunityId){
     });
     state.applications=[...(apps||[]),...state.applications];
     renderApplications();
+  }
+  if(pack){
+    state.packs=[pack,...state.packs.filter(item=>item.id!==pack.id)];
+    renderLibrary();
   }
   return pack;
 }
@@ -1556,6 +1876,10 @@ function xmlEscape(value){
   })[char]);
 }
 
+function createTxtBlob(text){
+  return new Blob([String(text||'')],{type:'text/plain;charset=utf-8'});
+}
+
 async function createDocxBlob(text){
   if(!window.JSZip)throw new Error('DOCX export library has not loaded yet. Check your connection and try again.');
   const zip=new window.JSZip();
@@ -1603,12 +1927,18 @@ function exportBaseName(prefix){
 async function exportCv(text,format,{cloud=false,prefix='CareerLaunch-CV'}={}){
   const content=String(text||'').trim();
   if(!content)throw new Error('Build or generate the CV before exporting it.');
-  const blob=format==='pdf'?await createPdfBlob(content):await createDocxBlob(content);
+  const blob=format==='pdf'
+    ?await createPdfBlob(content)
+    :format==='docx'
+      ?await createDocxBlob(content)
+      :createTxtBlob(content);
   const fileName=exportBaseName(prefix)+'.'+format;
   if(cloud){
     const mime=format==='pdf'
       ?'application/pdf'
-      :'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      :format==='docx'
+        ?'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        :'text/plain';
     const file=new File([blob],fileName,{type:mime});
     await uploadCandidateDocument(file,'generated_cv');
     return fileName+' saved to your private CareerLaunch cloud storage.';
@@ -1639,8 +1969,194 @@ bindExport('#saveManualCloudPdf',()=>state.manualPreviewText||buildManualCvText(
 bindExport('#saveManualCloudDocx',()=>state.manualPreviewText||buildManualCvText(),'docx',true,'CareerLaunch-Manual-CV','#manualCvResult');
 bindExport('#saveAiPdf',()=>state.generatedAi?.cv_markdown||'','pdf',false,'CareerLaunch-AI-CV','#aiCvResult');
 bindExport('#saveAiDocx',()=>state.generatedAi?.cv_markdown||'','docx',false,'CareerLaunch-AI-CV','#aiCvResult');
+bindExport('#saveAiTxt',()=>state.generatedAi?.cv_markdown||'','txt',false,'CareerLaunch-AI-CV','#aiCvResult');
 bindExport('#saveAiCloudPdf',()=>state.generatedAi?.cv_markdown||'','pdf',true,'CareerLaunch-AI-CV','#aiCvResult');
 bindExport('#saveAiCloudDocx',()=>state.generatedAi?.cv_markdown||'','docx',true,'CareerLaunch-AI-CV','#aiCvResult');
+
+function renderJobSites(){
+  const list=document.querySelector('#jobSiteList');
+  if(!list)return;
+  clear(list);
+  MAJOR_JOB_SITES.forEach(site=>{
+    const card=make('article',{className:'job-site-card'});
+    card.append(
+      make('h3',{text:site.name}),
+      make('p',{text:site.focus}),
+      make('p',{className:'muted',text:site.note})
+    );
+    const actions=make('div',{className:'card-actions'});
+    actions.append(make('a',{
+      className:'button button-secondary button-small',
+      text:'Open website',
+      attrs:{href:site.url,target:'_blank',rel:'noopener noreferrer'}
+    }));
+    const prepare=make('button',{className:'button button-small',text:'Prepare CareerLaunch pack'});
+    prepare.type='button';
+    prepare.addEventListener('click',()=>{
+      state.selectedOpportunity=null;
+      setValue('#aiVacancyUrl',site.url);
+      setValue('#aiPrompt',`I found a vacancy on ${site.name}. Help me prepare a truthful role-specific application package. Ask me for the vacancy link or advert and any missing applicant details.`);
+      switchView('cv');
+      document.querySelector('#aiCvAssistant')?.scrollIntoView({behavior:'smooth'});
+    });
+    actions.append(prepare);
+    card.append(actions);
+    list.append(card);
+  });
+}
+
+function libraryCategories(){
+  const categories=state.cvDraft?.content?.library_categories;
+  return Array.isArray(categories)?categories.filter(Boolean):[];
+}
+
+async function saveLibraryCategories(categories){
+  const content={...(state.cvDraft?.content||{}),library_categories:[...new Set(categories.filter(Boolean))]};
+  const rows=await dbRequest('cv_drafts?on_conflict=user_id',{
+    method:'POST',
+    body:{user_id:currentUserId(),content,updated_at:new Date().toISOString()},
+    prefer:'resolution=merge-duplicates,return=representation'
+  });
+  state.cvDraft=rows?.[0]||{user_id:currentUserId(),content};
+}
+
+function documentLibraryGroup(doc){
+  const type=String(doc.document_type||'').toLowerCase();
+  if(['cv','generated_cv'].includes(type))return 'cvs';
+  if(['certificate','qualification','reference'].includes(type))return 'evidence';
+  if(['personal_document','id','identity'].includes(type))return 'personal';
+  if(['application_form','form'].includes(type))return 'forms';
+  return type.startsWith('custom:')?type:'other';
+}
+
+function renderLibrary(){
+  const list=document.querySelector('#libraryList');
+  const status=document.querySelector('#libraryStatus');
+  const customTabs=document.querySelector('#libraryCustomTabs');
+  if(!list||!status)return;
+  clear(list);
+  if(customTabs){
+    clear(customTabs);
+    libraryCategories().forEach(category=>{
+      const button=make('button',{className:'chip library-custom-tab',text:category});
+      button.type='button';
+      button.addEventListener('click',()=>{
+        state.libraryFilter=`custom:${category.toLowerCase()}`;
+        renderLibrary();
+      });
+      customTabs.append(button);
+    });
+  }
+
+  document.querySelectorAll('.library-tab').forEach(button=>{
+    button.classList.toggle('active',button.dataset.libraryFilter===state.libraryFilter);
+  });
+
+  let shown=0;
+  if(state.libraryFilter==='cvs'){
+    state.packs.forEach(pack=>{
+      const card=make('article',{className:'library-card'});
+      card.append(
+        make('span',{className:'badge',text:pack.pack_type||'application'}),
+        make('h3',{text:pack.title||'CareerLaunch application pack'}),
+        make('p',{className:'muted',text:`Created ${formatDateTime(pack.created_at)}`})
+      );
+      const actions=make('div',{className:'card-actions'});
+      for(const [label,format] of [['CV PDF','pdf'],['CV DOCX','docx'],['CV TXT','txt']]){
+        const button=make('button',{className:'button button-secondary button-small',text:label});
+        button.type='button';
+        button.addEventListener('click',async()=>{
+          try{await exportCv(pack.cv_markdown||'',format,{prefix:pack.title||'CareerLaunch-CV'});}
+          catch(error){setText('#libraryStatus',error.message||'Export failed.');}
+        });
+        actions.append(button);
+      }
+      card.append(actions);
+      list.append(card);
+      shown++;
+    });
+  }
+
+  state.documents.forEach(doc=>{
+    if(documentLibraryGroup(doc)!==state.libraryFilter)return;
+    const card=make('article',{className:'library-card'});
+    card.append(
+      make('span',{className:'badge',text:doc.document_type}),
+      make('h3',{text:doc.file_name}),
+      make('p',{className:'muted',text:`Uploaded ${formatDateTime(doc.created_at)}`})
+    );
+    const remove=make('button',{className:'button button-danger button-small',text:'Remove'});
+    remove.type='button';
+    remove.addEventListener('click',()=>removeDocument(doc));
+    card.append(remove);
+    list.append(card);
+    shown++;
+  });
+
+  status.textContent=shown
+    ?`${shown} item${shown===1?'':'s'} in this library section.`
+    :'Nothing saved in this library section yet.';
+}
+
+document.querySelectorAll('.library-tab').forEach(button=>{
+  button.addEventListener('click',()=>{
+    state.libraryFilter=button.dataset.libraryFilter||'cvs';
+    renderLibrary();
+  });
+});
+
+document.querySelector('#libraryAddCategoryBtn')?.addEventListener('click',async()=>{
+  const input=document.querySelector('#libraryCategoryName');
+  const category=input?.value?.trim();
+  if(!category)return;
+  try{
+    await saveLibraryCategories([...libraryCategories(),category]);
+    input.value='';
+    renderLibrary();
+    setText('#libraryStatus',`Added library category: ${category}. Use document type Other for documents you want to organise manually in a future refinement.`);
+  }catch(error){
+    setText('#libraryStatus',error.message||'Could not save library category.');
+  }
+});
+
+function renderApplicationForms(){
+  const list=document.querySelector('#applicationFormCatalog');
+  if(!list)return;
+  clear(list);
+  APPLICATION_FORMS.forEach(form=>{
+    const card=make('article',{className:'library-card'});
+    card.append(
+      make('h3',{text:form.name}),
+      make('p',{className:'muted',text:`${form.source} • ${form.note}`})
+    );
+    const actions=make('div',{className:'card-actions'});
+    actions.append(make('a',{
+      className:'button button-secondary button-small',
+      text:'Open official form',
+      attrs:{href:form.url,target:'_blank',rel:'noopener noreferrer'}
+    }));
+    const assistant=make('button',{className:'button button-small',text:'Start form assistant'});
+    assistant.type='button';
+    assistant.addEventListener('click',()=>{
+      setValue('#aiApplicationKind','government');
+      setValue('#aiVacancyUrl',form.url);
+      setValue('#aiPrompt',`Help me prepare the ${form.name}. Ask me the required questions one by one, produce a completion worksheet, identify anything missing, and remind me where I must personally sign or declare information.`);
+      switchView('cv');
+      document.querySelector('#aiCvAssistant')?.scrollIntoView({behavior:'smooth'});
+    });
+    actions.append(assistant);
+    card.append(actions);
+    list.append(card);
+  });
+}
+
+document.querySelector('#studyAiAssistantBtn')?.addEventListener('click',()=>{
+  state.selectedOpportunity=null;
+  setValue('#aiApplicationKind','bursary');
+  setValue('#aiPrompt','Help me prepare a bursary, scholarship or learnership application. Ask me for the opportunity details, then prepare a truthful motivational letter and application checklist.');
+  switchView('cv');
+  document.querySelector('#aiCvAssistant')?.scrollIntoView({behavior:'smooth'});
+});
 
 /* Applications */
 function renderApplications(){
@@ -1689,6 +2205,9 @@ function renderApplications(){
           method:'PATCH',body:patch,prefer:'return=representation'
         });
         Object.assign(app,updated?.[0]||patch);
+        if(select.value==='submitted'&&app.opportunity_id){
+          await removeFromShortlist(app.opportunity_id);
+        }
         save.textContent='Saved';
       }catch(error){
         save.textContent='Try again';
