@@ -1166,7 +1166,11 @@ document.querySelector('#documentUploadForm')?.addEventListener('submit',async e
   try{
     for(const file of files){
       output.textContent='Uploading '+file.name+' securely and extracting usable text where supported…';
-      await uploadCandidateDocument(file,document.querySelector('#documentType')?.value||'other');
+      const customCategory=valueOrNull('#documentCustomCategory');
+      const documentType=customCategory
+        ?`custom:${customCategory.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}`
+        :(document.querySelector('#documentType')?.value||'other');
+      await uploadCandidateDocument(file,documentType);
       completed++;
     }
     output.textContent=completed+' document'+(completed===1?'':'s')+' uploaded to your private CareerLaunch storage.';
@@ -2038,10 +2042,11 @@ function renderLibrary(){
   if(customTabs){
     clear(customTabs);
     libraryCategories().forEach(category=>{
+      const slug=category.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
       const button=make('button',{className:'chip library-custom-tab',text:category});
       button.type='button';
       button.addEventListener('click',()=>{
-        state.libraryFilter=`custom:${category.toLowerCase()}`;
+        state.libraryFilter=`custom:${slug}`;
         renderLibrary();
       });
       customTabs.append(button);
