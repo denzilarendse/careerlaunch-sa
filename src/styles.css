@@ -7,6 +7,8 @@
   --lime:#c9f26b;
   --line:#dbe7e3;
   --muted:#58716a;
+  --soft:#f4f8f6;
+  --warn:#fff8e6;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -14,6 +16,10 @@ body{margin:0;background:#f7faf9}
 [hidden]{display:none!important}
 a{color:inherit}
 button,input,select,textarea{font:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid #168263;
+  outline-offset:2px
+}
 .skip{position:absolute;left:-9999px}
 .skip:focus{left:1rem;top:1rem;background:white;padding:.75rem;z-index:20}
 
@@ -51,7 +57,9 @@ nav a{text-decoration:none;font-weight:700}
 .eyebrow{font-weight:900;letter-spacing:.12em;color:#168263}
 .hero .eyebrow,.dark .eyebrow{color:var(--mint)}
 .button{
-  display:inline-block;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   border:0;
   border-radius:999px;
   padding:1rem 1.3rem;
@@ -59,10 +67,12 @@ nav a{text-decoration:none;font-weight:700}
   color:var(--ink);
   font-weight:900;
   text-decoration:none;
-  cursor:pointer
+  cursor:pointer;
+  min-height:46px
 }
 .button:disabled{opacity:.55;cursor:wait}
 .button-secondary{background:white;border:1px solid var(--line)}
+.button-small{padding:.7rem 1rem;min-height:40px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
 .grid article,form{
   background:white;
@@ -74,7 +84,7 @@ nav a{text-decoration:none;font-weight:700}
 .dark{background:var(--ink);color:white}
 select,input,textarea{
   display:block;
-  width:min(100%,520px);
+  width:100%;
   padding:1rem;
   margin:.6rem 0 1rem;
   border:1px solid #9eb5ae;
@@ -84,6 +94,13 @@ select,input,textarea{
 }
 textarea{resize:vertical}
 label{font-weight:800}
+.checkbox-row{
+  display:flex;
+  align-items:flex-start;
+  gap:.7rem;
+  margin:1rem 0
+}
+.checkbox-row input{width:auto;margin:.25rem 0 0}
 .test-note,.muted{color:var(--muted)}
 footer{padding:2rem 7vw;background:#071827;color:white}
 
@@ -91,7 +108,7 @@ footer{padding:2rem 7vw;background:#071827;color:white}
 .app-shell{
   padding:max(1rem,env(safe-area-inset-top)) clamp(1rem,4vw,3rem) calc(5rem + env(safe-area-inset-bottom));
   min-height:100vh;
-  background:#f4f8f6
+  background:var(--soft)
 }
 .app-topbar{
   display:flex;
@@ -115,7 +132,8 @@ footer{padding:2rem 7vw;background:#071827;color:white}
   background:rgba(244,248,246,.96);
   backdrop-filter:blur(12px);
   border:1px solid var(--line);
-  border-radius:18px
+  border-radius:18px;
+  scrollbar-width:thin
 }
 .app-nav-button{
   flex:0 0 auto;
@@ -142,12 +160,24 @@ footer{padding:2rem 7vw;background:#071827;color:white}
   border-bottom:1px solid var(--line);
   margin-bottom:1.2rem
 }
-.workspace-hero h2,.app-view h2{font-size:clamp(1.8rem,6vw,3rem);margin:.25rem 0 1rem}
-.dashboard-grid{
+.workspace-hero h2,.app-view h2{
+  font-size:clamp(1.8rem,6vw,3rem);
+  margin:.25rem 0 1rem
+}
+.dashboard-grid,.stats-grid{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:1rem
 }
+.stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:1rem}
+.stat-card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:1rem;
+  background:#fbfdfc
+}
+.stat-card span{display:block;color:var(--muted);font-size:.9rem}
+.stat-card strong{display:block;font-size:1.65rem;margin-top:.35rem}
 .workspace-card{
   text-align:left;
   min-height:150px;
@@ -160,22 +190,147 @@ footer{padding:2rem 7vw;background:#071827;color:white}
 }
 .workspace-card strong{display:block;font-size:1.15rem;margin-bottom:.5rem}
 .workspace-card span{display:block;color:var(--muted);line-height:1.5}
-.workspace-card:focus,.workspace-card:hover{border-color:#168263;outline:2px solid transparent}
+.workspace-card:focus,.workspace-card:hover{border-color:#168263}
 .workspace-form{max-width:680px;padding:1.25rem}
-.preview-card,.status-card,.empty-state{
+.wide-form{max-width:860px}
+.compact-form{margin-bottom:1rem}
+.two-column{
+  display:grid;
+  grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);
+  gap:1rem;
+  align-items:start
+}
+.evidence-column{display:grid;gap:1rem}
+.record-list{display:grid;gap:.6rem;margin-bottom:1rem}
+.mini-record{
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:.9rem 1rem;
+  background:#fbfdfc
+}
+.mini-record strong,.mini-record span{display:block}
+.mini-record span{margin-top:.25rem;color:var(--muted)}
+
+.preview-card,.status-card,.empty-state,.research-panel,.research-note,.document-preview{
   margin-top:1rem;
   padding:1.25rem;
   border:1px solid var(--line);
   border-radius:18px;
   background:#f8fbfa
 }
-.preview-card h3{margin-top:0}
+.research-panel{
+  margin-top:1.2rem;
+  display:grid;
+  grid-template-columns:minmax(180px,.7fr) minmax(0,1.3fr);
+  gap:1rem;
+  align-items:start
+}
+.research-panel h3{margin:.25rem 0}
+.research-note{background:#f1fbf7}
+.compact-list{display:grid;gap:.6rem}
+.research-row{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:white;
+  padding:.85rem 1rem;
+  text-align:left;
+  cursor:pointer
+}
+.research-row strong,.research-row span{display:block}
+.research-row span{margin-top:.25rem;color:var(--muted);font-size:.9rem}
+
+.filter-row{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem;
+  align-items:end
+}
+.filter-row label{display:block}
+.filter-row select,.filter-row input{margin-bottom:0}
+.opportunity-list,.application-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1rem;
+  margin-top:1rem
+}
+.opportunity-card,.application-card{
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:1.2rem;
+  background:white
+}
+.opportunity-heading{
+  display:flex;
+  justify-content:space-between;
+  gap:1rem;
+  align-items:flex-start
+}
+.opportunity-card h3,.application-card h3{margin:.45rem 0 .35rem}
+.badge{
+  display:inline-flex;
+  border-radius:999px;
+  padding:.35rem .65rem;
+  background:#e9f7f1;
+  color:#0d654d;
+  font-size:.78rem;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.04em
+}
+.deadline{
+  flex:0 0 auto;
+  text-align:right;
+  border-left:1px solid var(--line);
+  padding-left:1rem
+}
+.deadline span,.deadline strong{display:block}
+.deadline span{font-size:.75rem;color:var(--muted);text-transform:uppercase}
+.salary{font-weight:900}
+.meta{font-size:.9rem;color:var(--muted)}
+.card-actions,.tracker-row{
+  display:flex;
+  gap:.65rem;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-top:1rem
+}
+.tracker-row select{width:auto;min-width:150px;margin:0}
+.text-link{
+  display:inline-block;
+  margin-top:1rem;
+  color:#0d654d;
+  font-weight:800
+}
+.document-preview{background:white}
+.document-preview pre{
+  white-space:pre-wrap;
+  word-break:break-word;
+  font:inherit;
+  line-height:1.55;
+  background:#f8fbfa;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:1rem
+}
+.warning-box{
+  margin-top:1rem;
+  padding:1rem;
+  border:1px solid #e2b14c;
+  border-radius:14px;
+  background:var(--warn)
+}
 .empty-state{text-align:center;padding:2rem}
+
+@media(max-width:900px){
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two-column,.research-panel{grid-template-columns:1fr}
+}
 
 @media(max-width:720px){
   header{padding:.85rem 1rem}
   header nav{display:none}
-  .grid,.account-grid,.dashboard-grid{grid-template-columns:1fr}
+  .grid,.account-grid,.dashboard-grid,.stats-grid,.opportunity-list,.application-list,.filter-row{grid-template-columns:1fr}
   .hero h1{font-size:clamp(3rem,16vw,5rem)}
   .hero,main>div>section{padding:3rem 1rem}
   .app-shell{padding:1rem 1rem calc(5rem + env(safe-area-inset-bottom))}
@@ -184,6 +339,18 @@ footer{padding:2rem 7vw;background:#071827;color:white}
   .app-nav{border-radius:14px}
   .app-view{border-radius:18px;padding:1rem}
   .workspace-card{min-height:120px}
+  .opportunity-heading{display:block}
+  .deadline{
+    text-align:left;
+    border-left:0;
+    border-top:1px solid var(--line);
+    padding-left:0;
+    padding-top:.7rem;
+    margin-top:.7rem
+  }
+  .card-actions .button{width:100%}
+  .tracker-row{align-items:stretch}
+  .tracker-row select,.tracker-row .button{width:100%}
 }
 
 @media(prefers-reduced-motion:reduce){
