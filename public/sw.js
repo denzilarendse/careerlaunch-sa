@@ -1,4 +1,4 @@
-const CACHE='careerlaunch-shell-v5';
+const CACHE='careerlaunch-shell-v6';
 const SHELL=[
   '/',
   '/src/styles.css',
