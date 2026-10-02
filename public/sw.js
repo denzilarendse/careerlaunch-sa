@@ -4,6 +4,7 @@ const SHELL=[
   '/src/styles.css',
   '/src/main.js',
   '/src/career-options.js',
+  '/src/resource-catalog.js',
   '/runtime-config.js',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
