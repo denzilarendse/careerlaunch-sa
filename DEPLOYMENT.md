@@ -19,7 +19,7 @@ Do not put either value in source code, `.env`, browser runtime config, or chat.
 
 ## Live AI CV
 
-AI generation runs only in the Supabase Edge Function, not in Netlify or the browser.
+AI generation and the conversational CV interview run only in the Supabase Edge Function, not in Netlify or the browser.
 
 Required Supabase Edge Function secret:
 
@@ -28,7 +28,7 @@ Required Supabase Edge Function secret:
 Optional Supabase Edge Function overrides:
 
 - `CAREERLAUNCH_AI_API_URL` — defaults to `https://api.openai.com/v1/responses`.
-- `CAREERLAUNCH_AI_MODEL` — defaults to `gpt-5.6-luna` for cost-sensitive live testing.
+- `CAREERLAUNCH_AI_MODEL` — defaults to `gpt-6-luna` for cost-sensitive live testing.
 
 The OpenAI key must never be stored in Netlify public variables or frontend files.
 
