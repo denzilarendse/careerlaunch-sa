@@ -211,6 +211,27 @@ function buildStructuredFallback(evidence: Record<string, unknown>, reason: stri
   };
 }
 
+function extractResponseText(raw: unknown) {
+  const root = recordOf(raw);
+  if (typeof root.output_text === "string" && root.output_text.trim()) {
+    return root.output_text.trim();
+  }
+  const pieces: string[] = [];
+  if (Array.isArray(root.output)) {
+    for (const itemValue of root.output) {
+      const item = recordOf(itemValue);
+      if (!Array.isArray(item.content)) continue;
+      for (const partValue of item.content) {
+        const part = recordOf(partValue);
+        if ((part.type === "output_text" || part.type === "text") && typeof part.text === "string") {
+          pieces.push(part.text);
+        }
+      }
+    }
+  }
+  return pieces.join("\n").trim();
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
@@ -307,14 +328,14 @@ Deno.serve(async (req: Request) => {
     selected_skills: selectedSkills,
   };
 
-  const apiUrl = Deno.env.get("CAREERLAUNCH_AI_API_URL");
+  const apiUrl = Deno.env.get("CAREERLAUNCH_AI_API_URL") ?? "https://api.openai.com/v1/responses";
   const apiKey = Deno.env.get("CAREERLAUNCH_AI_API_KEY");
-  const model = Deno.env.get("CAREERLAUNCH_AI_MODEL");
+  const model = Deno.env.get("CAREERLAUNCH_AI_MODEL") ?? "gpt-5.6-luna";
 
-  if (!apiUrl || !apiKey || !model) {
+  if (!apiKey) {
     return json(buildStructuredFallback(
       evidence as Record<string, unknown>,
-      "The external AI provider is not configured, so CareerLaunch generated a structured evidence-only draft instead."
+      "The external AI provider key is not configured, so CareerLaunch generated a structured evidence-only draft instead."
     ));
   }
 
@@ -367,6 +388,29 @@ checklist (array of strings),
 warnings (array of strings),
 match_notes (array of strings).`;
 
+  const responseSchema = {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "cv_markdown",
+      "cover_letter_markdown",
+      "email_subject",
+      "email_body",
+      "checklist",
+      "warnings",
+      "match_notes",
+    ],
+    properties: {
+      cv_markdown: { type: "string" },
+      cover_letter_markdown: { type: "string" },
+      email_subject: { type: "string" },
+      email_body: { type: "string" },
+      checklist: { type: "array", items: { type: "string" } },
+      warnings: { type: "array", items: { type: "string" } },
+      match_notes: { type: "array", items: { type: "string" } },
+    },
+  };
+
   const aiResponse = await fetch(apiUrl, {
     method: "POST",
     headers: {
@@ -375,12 +419,18 @@ match_notes (array of strings).`;
     },
     body: JSON.stringify({
       model,
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify(evidence).slice(0, 70000) },
-      ],
+      store: false,
+      max_output_tokens: 12000,
+      instructions: systemPrompt,
+      input: JSON.stringify(evidence).slice(0, 70000),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "careerlaunch_cv_pack",
+          schema: responseSchema,
+          strict: true,
+        },
+      },
     }),
   });
 
@@ -392,8 +442,8 @@ match_notes (array of strings).`;
     ));
   }
 
-  const content = raw?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") {
+  const content = extractResponseText(raw);
+  if (!content) {
     return json(buildStructuredFallback(
       evidence as Record<string, unknown>,
       "The AI provider returned an invalid response, so CareerLaunch generated a structured evidence-only draft instead."
@@ -412,6 +462,7 @@ match_notes (array of strings).`;
 
   const safe = {
     generation_mode: "ai_provider",
+    provider_model: model,
     cv_markdown: clip(generated.cv_markdown, 40000),
     cover_letter_markdown: clip(generated.cover_letter_markdown, 20000),
     email_subject: clip(generated.email_subject, 500),
