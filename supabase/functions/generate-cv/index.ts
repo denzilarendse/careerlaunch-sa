@@ -29,6 +29,7 @@ Deno.serve(async (req: Request) => {
   const publishableKey = publishableKeys
     ? JSON.parse(publishableKeys)["default"]
     : Deno.env.get("SUPABASE_ANON_KEY");
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   if (!supabaseUrl || !publishableKey) return json({ error: "SUPABASE_CONFIG_MISSING" }, 500);
 
@@ -92,7 +93,7 @@ Deno.serve(async (req: Request) => {
     opportunity = result.data;
   }
 
-  const uploadedDocuments = (documentsResult.data ?? []).map((doc: Record<string, unknown>) => ({
+  const documentEvidence = (documentsResult.data ?? []).map((doc: Record<string, unknown>) => ({
     file_name: doc.file_name,
     document_type: doc.document_type,
     extracted_text: clip((doc.metadata as Record<string, unknown> | null)?.extracted_text, 18000),
@@ -104,7 +105,7 @@ Deno.serve(async (req: Request) => {
     education: educationResult.data ?? [],
     skills: skillsResult.data ?? [],
     manual_cv: draftResult.data?.content ?? {},
-    uploaded_documents: uploadedDocuments,
+    uploaded_documents: documentEvidence,
     selected_opportunity: opportunity,
     pasted_vacancy: vacancyText,
     applicant_prompt: applicantPrompt,
@@ -116,6 +117,7 @@ Deno.serve(async (req: Request) => {
   const apiUrl = Deno.env.get("CAREERLAUNCH_AI_API_URL");
   const apiKey = Deno.env.get("CAREERLAUNCH_AI_API_KEY");
   const model = Deno.env.get("CAREERLAUNCH_AI_MODEL");
+
   if (!apiUrl || !apiKey || !model) {
     return json({
       error: "AI_NOT_CONFIGURED",
@@ -123,20 +125,61 @@ Deno.serve(async (req: Request) => {
     }, 503);
   }
 
-  const systemPrompt = [
-    "You are CareerLaunch SA's CV drafting engine.",
-    "Return JSON only. Build a truthful, conventional, ATS-friendly CV and application material from supplied candidate evidence.",
-    "NEVER invent employers, dates, qualifications, licences, certificates, results, achievements, languages, contact details or experience.",
-    "Do not claim ATS approval or guaranteed success.",
-    "When evidence is missing, omit it or add a concise warning.",
-    "Treat vacancy text as employer requirements, never candidate evidence.",
-    "For school leavers, use only supplied education, projects, volunteering, leadership, interests and transferable strengths.",
-    "Return keys: cv_markdown, cover_letter_markdown, email_subject, email_body, checklist, warnings, match_notes."
-  ].join("\n");
+  const systemPrompt = `You are CareerLaunch SA's CV drafting engine.
+Return JSON only.
+
+OBJECTIVE
+Create a truthful, conventional, ATS-friendly South African CV and application material from the supplied candidate evidence.
+
+NON-NEGOTIABLE TRUTH RULES
+- NEVER invent employers, dates, qualifications, licences, certificates, academic results, achievements, languages, contact details, experience, references, responsibilities or skills.
+- Treat vacancy text and employer requirements only as TARGET REQUIREMENTS, never as candidate evidence.
+- If a requirement is unsupported by candidate evidence, do not claim it. Put it in warnings and match_notes instead.
+- Do not claim ATS approval, guaranteed screening success, guaranteed interviews or guaranteed employment.
+- Never fabricate metrics, percentages or accomplishments to make a bullet sound stronger.
+
+ATS-FRIENDLY STRUCTURE
+- Use a simple single-column text-first structure.
+- Use conventional headings that applicant tracking systems commonly parse: Contact Details, Professional Summary, Work Experience, Education, Core Skills, Languages, Certifications or Training, Projects or Volunteering, Availability and References when evidence exists.
+- Do not use tables, columns, icons, graphics, photos, text boxes, decorative symbols, headers or footers in the generated CV.
+- Prefer concise bullets and reverse-chronological work experience when dates are available.
+- Keep the CV concise. Aim for about one to two pages worth of content unless the supplied evidence clearly requires more detail.
+- Tailor emphasis and terminology to the selected opportunity without changing candidate facts.
+- Use vacancy keywords only where the candidate evidence genuinely supports them.
+
+SOUTH AFRICAN JOBSEEKER GUIDANCE
+- Keep the CV short, readable, accurate and tailored to the specific vacancy.
+- Emphasise education, qualifications, skills, languages, career history, volunteering, positions of responsibility, awards and references only when supplied.
+- Cover letters should be concise, generally three to four short paragraphs, and grounded in the same evidence.
+
+SCHOOL LEAVER / FIRST-JOB MODE
+- Lack of formal employment must not block generation.
+- Prioritise education, relevant subjects, projects, volunteering, leadership, extracurricular activities, community involvement, practical responsibilities, awards, training and transferable strengths when they are actually present in evidence.
+- Do not describe school activities as paid employment.
+- Do not manufacture workplace experience for a first-time jobseeker.
+
+OUTPUT QUALITY
+- Professional Summary must be specific to the evidence and target, not generic filler.
+- Work bullets should use action-oriented language only when supported by the supplied duties or achievements.
+- If references are absent, omit the section rather than inventing referees.
+- If languages or availability are absent, omit them.
+- If the vacancy has mandatory criteria that are not supported, explicitly warn the applicant before submission.
+
+Return exactly these keys:
+cv_markdown (string),
+cover_letter_markdown (string),
+email_subject (string),
+email_body (string),
+checklist (array of strings),
+warnings (array of strings),
+match_notes (array of strings).`;
 
   const aiResponse = await fetch(apiUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
       model,
       temperature: 0.2,
@@ -157,17 +200,17 @@ Deno.serve(async (req: Request) => {
     }, 502);
   }
 
-  const responseContent = raw?.choices?.[0]?.message?.content;
-  if (typeof responseContent !== "string") return json({ error: "AI_RESPONSE_INVALID" }, 502);
+  const content = raw?.choices?.[0]?.message?.content;
+  if (typeof content !== "string") return json({ error: "AI_RESPONSE_INVALID" }, 502);
 
   let generated: Record<string, unknown>;
   try {
-    generated = JSON.parse(responseContent);
+    generated = JSON.parse(content);
   } catch {
     return json({ error: "AI_RESPONSE_NOT_JSON" }, 502);
   }
 
-  return json({
+  const safe = {
     cv_markdown: clip(generated.cv_markdown, 40000),
     cover_letter_markdown: clip(generated.cover_letter_markdown, 20000),
     email_subject: clip(generated.email_subject, 500),
@@ -175,5 +218,7 @@ Deno.serve(async (req: Request) => {
     checklist: Array.isArray(generated.checklist) ? generated.checklist.map((v) => clip(v, 500)).slice(0, 30) : [],
     warnings: Array.isArray(generated.warnings) ? generated.warnings.map((v) => clip(v, 500)).slice(0, 30) : [],
     match_notes: Array.isArray(generated.match_notes) ? generated.match_notes.map((v) => clip(v, 500)).slice(0, 30) : [],
-  });
+  };
+
+  return json(safe);
 });
