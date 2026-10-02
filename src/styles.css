@@ -356,3 +356,123 @@ footer{padding:2rem 7vw;background:#071827;color:white}
 @media(prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important}
 }
+
+
+/* Expanded CV builder */
+.cv-section{
+  margin-top:1.5rem;
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:clamp(1rem,3vw,1.5rem);
+  background:#fbfdfc
+}
+.ai-section{background:#f4fbf8}
+.section-heading,.subsection-title,.shortlist-toolbar{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:1rem
+}
+.section-heading h3,.subsection-title h4{margin:.25rem 0}
+.section-heading>p{max-width:560px;margin:.25rem 0}
+.multi-grid,.form-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem
+}
+.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.multi-select{position:relative}
+.option-menu{
+  position:absolute;
+  z-index:30;
+  width:100%;
+  max-height:260px;
+  overflow:auto;
+  border:1px solid #9eb5ae;
+  border-radius:14px;
+  background:white;
+  box-shadow:0 12px 30px rgba(7,24,39,.14);
+  padding:.35rem
+}
+.option-item{
+  display:block;
+  width:100%;
+  text-align:left;
+  border:0;
+  background:white;
+  border-radius:10px;
+  padding:.75rem;
+  cursor:pointer;
+  color:var(--ink)
+}
+.option-item:hover,.option-item:focus{background:#eef8f4}
+.chip-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.45rem;
+  margin:.3rem 0 .8rem
+}
+.chip{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.4rem .55rem .4rem .75rem;
+  border-radius:999px;
+  background:#e9f7f1;
+  color:#0d654d;
+  font-weight:800;
+  font-size:.9rem
+}
+.chip button{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font-weight:900;
+  cursor:pointer
+}
+.full-form{max-width:none}
+.subsection{
+  margin:1.2rem 0;
+  padding:1rem;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:white
+}
+.action-row{
+  display:flex;
+  gap:.75rem;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-top:1rem
+}
+.button-danger{
+  background:#fff0f0;
+  color:#8a1f1f;
+  border:1px solid #e7b4b4
+}
+.shortlist-toolbar{
+  align-items:center;
+  padding:1rem;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbfdfc
+}
+.document-preview pre{max-height:70vh;overflow:auto}
+.cv-section .workspace-form{margin-top:1rem}
+.cv-section h4{font-size:1.05rem}
+#documentList{margin-top:1rem}
+
+@media(max-width:900px){
+  .multi-grid{grid-template-columns:1fr}
+  .section-heading{display:block}
+}
+@media(max-width:720px){
+  .form-grid{grid-template-columns:1fr}
+  .subsection-title,.shortlist-toolbar{display:block}
+  .subsection-title .button,.shortlist-toolbar .button{width:100%;margin-top:.7rem}
+  .action-row .button{width:100%}
+  .option-menu{position:relative;margin-top:-.6rem;margin-bottom:1rem}
+}
