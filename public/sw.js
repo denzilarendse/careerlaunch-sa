@@ -1,5 +1,14 @@
-const CACHE='careerlaunch-shell-v4';
-const SHELL=['/','/src/styles.css','/src/main.js','/runtime-config.js','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png'];
+const CACHE='careerlaunch-shell-v5';
+const SHELL=[
+  '/',
+  '/src/styles.css',
+  '/src/main.js',
+  '/src/career-options.js',
+  '/runtime-config.js',
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
+];
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
@@ -15,8 +24,12 @@ self.addEventListener('activate',event=>{
 
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
-  const requestUrl=new URL(event.request.url);
-  if(requestUrl.pathname==='/runtime-config.js'){
+  const url=new URL(event.request.url);
+  if(url.origin!==self.location.origin){
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  if(url.pathname==='/runtime-config.js'){
     event.respondWith(fetch(event.request,{cache:'no-store'}));
     return;
   }
@@ -24,9 +37,7 @@ self.addEventListener('fetch',event=>{
     fetch(event.request)
       .then(response=>{
         const copy=response.clone();
-        if(requestUrl.origin===self.location.origin){
-          caches.open(CACHE).then(cache=>cache.put(event.request,copy));
-        }
+        caches.open(CACHE).then(cache=>cache.put(event.request,copy));
         return response;
       })
       .catch(()=>caches.match(event.request).then(hit=>hit||caches.match('/')))
