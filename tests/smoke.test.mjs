@@ -107,3 +107,18 @@ test('CSP permits pinned browser document libraries and Supabase',async()=>{
   assert.ok(config.includes('worker-src'));
   assert.ok(config.includes('https://rqyvfbuvdhbtwakkqnok.supabase.co'));
 });
+
+
+test('sign out revokes the remote session before clearing local state',async()=>{
+  const js=await readFile(jsUrl,'utf8');
+  assert.ok(js.includes('/auth/v1/logout'));
+  assert.ok(js.includes('await revokeSession(session)'));
+  assert.ok(js.includes('localStorage.removeItem(SESSION_KEY)'));
+});
+
+test('build emits a release identity for exact deployment verification',async()=>{
+  const build=await readFile(new URL('../scripts/build.mjs',import.meta.url),'utf8');
+  assert.ok(build.includes("release.json"));
+  assert.ok(build.includes("GITHUB_SHA"));
+  assert.ok(build.includes("generated_at"));
+});
