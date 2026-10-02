@@ -139,7 +139,7 @@ test('structured fallback stays truthful when AI provider is unavailable',async(
 test('OpenAI Responses API defaults are server-side and overrideable',async()=>{
   const edge=await readFile(edgeUrl,'utf8');
   assert.ok(edge.includes('https://api.openai.com/v1/responses'));
-  assert.ok(edge.includes('gpt-5.6-luna'));
+  assert.ok(edge.includes('gpt-6-luna'));
   assert.ok(edge.includes('CAREERLAUNCH_AI_API_KEY'));
   assert.ok(edge.includes('CAREERLAUNCH_AI_API_MODEL')===false);
   assert.ok(edge.includes('CAREERLAUNCH_AI_MODEL'));
@@ -212,4 +212,16 @@ test('manual and AI CVs expose PDF DOCX and TXT export paths',async()=>{
   assert.ok(html.includes('saveAiDocx'));
   assert.ok(html.includes('saveAiTxt'));
   assert.ok(js.includes('createTxtBlob'));
+});
+
+
+test('conversation mode and vacancy reader are server-side protected',async()=>{
+  const edge=await readFile(edgeUrl,'utf8');
+  assert.ok(edge.includes('mode === "assistant"'));
+  assert.ok(edge.includes('mode === "fetch_vacancy"'));
+  assert.ok(edge.includes('blockedHostname'));
+  assert.ok(edge.includes('UNSAFE_VACANCY_URL'));
+  assert.ok(edge.includes('motivation_letter_markdown'));
+  assert.ok(edge.includes('form_completion_markdown'));
+  assert.ok(edge.includes('gpt-6-luna'));
 });
