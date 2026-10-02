@@ -8,6 +8,7 @@ import {
 const SESSION_KEY='careerlaunch_session';
 const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs';
 const PDFJS_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.worker.min.mjs';
+const JSPDF_URL='https://cdn.jsdelivr.net/npm/jspdf@4.2.1/+esm';
 
 const state={
   profile:null,
@@ -714,6 +715,7 @@ function hydrateManualCv(){
   setValue('#manualLocation',[profile.city,profile.province].filter(Boolean).join(', ')||content.location||'');
   setValue('#manualAddress',profile.address_text||content.address||'');
   setValue('#manualSummary',profile.summary||content.professional_summary||'');
+  setValue('#manualCoreSkills',(content.core_skills||state.skills.map(item=>item.skill_name)).join(', '));
   setValue('#manualLanguages',(profile.languages||content.languages||[]).join(', '));
   setValue('#manualAvailability',profile.availability||content.availability||'');
   const references=profile.references||content.references||[];
@@ -729,6 +731,7 @@ function buildCvDraftContent(){
     location:valueOrNull('#manualLocation'),
     address:valueOrNull('#manualAddress'),
     professional_summary:valueOrNull('#manualSummary'),
+    core_skills:splitCsv(valueOrNull('#manualCoreSkills')),
     languages:splitCsv(valueOrNull('#manualLanguages')),
     availability:valueOrNull('#manualAvailability'),
     references:(document.querySelector('#manualReferences')?.value||'')
@@ -878,6 +881,7 @@ function buildManualCvText(){
   }
 
   const combinedSkills=[
+    ...content.core_skills,
     ...content.skills,
     ...state.skills.map(item=>item.skill_name)
   ].filter(Boolean);
@@ -1045,24 +1049,31 @@ document.querySelector('#documentUploadForm')?.addEventListener('submit',async e
   event.preventDefault();
   const input=document.querySelector('#documentFile');
   const output=document.querySelector('#documentUploadResult');
-  const file=input?.files?.[0];
-  if(!file){
-    output.textContent='Choose a document first.';
+  const files=[...(input?.files||[])];
+  if(!files.length){
+    output.textContent='Choose one or more documents first.';
     return;
   }
-  if(file.size>15*1024*1024){
-    output.textContent='The maximum upload size is 15 MB.';
+  const oversized=files.find(file=>file.size>15*1024*1024);
+  if(oversized){
+    output.textContent=oversized.name+' exceeds the 15 MB upload limit.';
     return;
   }
-  output.textContent='Uploading securely and extracting usable text where supported…';
+  const button=event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled=true;
+  let completed=0;
   try{
-    const result=await uploadCandidateDocument(file,document.querySelector('#documentType')?.value||'other');
-    output.textContent=result.extractedText
-      ?'Document uploaded. Text was extracted for AI drafting.'
-      :'Document uploaded securely. This file type could not be text-extracted in the browser, so add key facts manually if AI needs them.';
+    for(const file of files){
+      output.textContent='Uploading '+file.name+' securely and extracting usable text where supported…';
+      await uploadCandidateDocument(file,document.querySelector('#documentType')?.value||'other');
+      completed++;
+    }
+    output.textContent=completed+' document'+(completed===1?'':'s')+' uploaded to your private CareerLaunch storage.';
     event.currentTarget.reset();
   }catch(error){
     output.textContent=error.message||'Could not upload document.';
+  }finally{
+    button.disabled=false;
   }
 });
 
@@ -1329,6 +1340,7 @@ async function generateAiCv({opportunityId,prompt,savePack=false}){
   await saveCvDraft();
   const result=await functionRequest('generate-cv',{
     opportunity_id:opportunityId||null,
+    vacancy_text:valueOrNull('#aiVacancyText')||'',
     prompt:prompt||'Create a truthful ATS-friendly CV using my saved evidence.',
     target_roles:selectionValues('roles'),
     strengths:selectionValues('strengths'),
