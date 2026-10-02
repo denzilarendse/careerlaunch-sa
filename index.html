@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071827">
-  <meta name="description" content="CareerLaunch SA helps jobseekers and matriculants prepare truthful ATS-ready applications and discover verified opportunities.">
+  <meta name="description" content="CareerLaunch SA helps jobseekers and matriculants prepare truthful ATS-friendly applications and discover verified opportunities.">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/src/styles.css">
   <title>CareerLaunch SA</title>
@@ -27,7 +27,7 @@
       <section class="hero">
         <p class="eyebrow">CAREER TOOLS • SOUTH AFRICA</p>
         <h1>Turn potential into a <span>real application.</span></h1>
-        <p>Build professional ATS-ready CVs, tailor applications to verified vacancies, and prepare for jobs, learnerships, internships, bursaries and scholarships.</p>
+        <p>Build professional ATS-friendly CVs, tailor applications to verified vacancies, and prepare for jobs, learnerships, internships, bursaries and scholarships.</p>
         <a class="button" href="#account">Create an application pack</a>
       </section>
 
@@ -36,7 +36,7 @@
         <h2>One place. Every step of the application.</h2>
         <div class="grid">
           <article><h3>Professional CV</h3><p>Create a truthful ATS-friendly CV from your saved evidence.</p></article>
-          <article><h3>Job-specific pack</h3><p>Prepare a vacancy-specific CV, cover letter, email and checklist without inventing qualifications.</p></article>
+          <article><h3>AI role-specific CVs</h3><p>Use your manual CV, uploaded documents and selected vacancy to generate a tailored draft without inventing candidate facts.</p></article>
           <article><h3>Verified opportunities</h3><p>Use researched vacancies and funding opportunities with official sources and freshness dates.</p></article>
         </div>
       </section>
@@ -102,6 +102,7 @@
         <button type="button" class="app-nav-button" data-view="profile">Profile</button>
         <button type="button" class="app-nav-button" data-view="cv">CV Builder</button>
         <button type="button" class="app-nav-button" data-view="jobs">Opportunities</button>
+        <button type="button" class="app-nav-button" data-view="shortlist">Shortlisted</button>
         <button type="button" class="app-nav-button" data-view="study">Study & Funding</button>
         <button type="button" class="app-nav-button" data-view="applications">Applications</button>
       </nav>
@@ -110,19 +111,19 @@
         <div class="workspace-hero">
           <p class="eyebrow">LIVE DASHBOARD</p>
           <h2>Your career launchpad</h2>
-          <p>Live data comes from your protected CareerLaunch profile and the verified opportunity research store.</p>
+          <p>Live data comes from your protected CareerLaunch profile, shortlist and the verified opportunity research store.</p>
         </div>
         <div class="stats-grid">
           <article class="stat-card"><span>Profile completeness</span><strong id="statProfile">0%</strong></article>
           <article class="stat-card"><span>Verified open opportunities</span><strong id="statOpportunities">0</strong></article>
-          <article class="stat-card"><span>Application records</span><strong id="statApplications">0</strong></article>
+          <article class="stat-card"><span>Shortlisted</span><strong id="statShortlist">0 / 5</strong></article>
           <article class="stat-card"><span>Next known deadline</span><strong id="statDeadline">—</strong></article>
         </div>
         <div class="dashboard-grid">
           <button class="workspace-card" type="button" data-go="profile"><strong>1. Build your evidence profile</strong><span>Save your personal details, education, experience and evidence-backed skills.</span></button>
-          <button class="workspace-card" type="button" data-go="cv"><strong>2. Build a truthful CV</strong><span>Generate an ATS-friendly outline from saved evidence only.</span></button>
+          <button class="workspace-card" type="button" data-go="cv"><strong>2. Build or generate your CV</strong><span>Use the manual structured builder or create a role-specific AI draft.</span></button>
           <button class="workspace-card" type="button" data-go="jobs"><strong>3. Research opportunities</strong><span>Browse current official-source vacancies, internships and learning opportunities.</span></button>
-          <button class="workspace-card" type="button" data-go="applications"><strong>4. Track applications</strong><span>Keep application packs, status and next actions together.</span></button>
+          <button class="workspace-card" type="button" data-go="shortlist"><strong>4. Work your shortlist</strong><span>Save up to five vacancies and generate a role-specific CV for each.</span></button>
         </div>
         <section class="research-panel" aria-labelledby="researchPulseTitle">
           <div>
@@ -136,15 +137,17 @@
       <div class="app-view" data-app-view="profile" hidden>
         <p class="eyebrow">PROFILE & EVIDENCE</p>
         <h2>Build the factual record behind every application</h2>
-        <p class="muted">CareerLaunch should tailor only what you actually provide. Missing facts stay missing rather than being invented.</p>
+        <p class="muted">Missing facts stay missing rather than being invented. All fields can be completed gradually.</p>
 
         <div class="two-column">
           <form id="profileForm" class="workspace-form">
             <h3>Personal profile</h3>
             <label for="profileName">Full name</label>
-            <input id="profileName" autocomplete="name" required>
+            <input id="profileName" autocomplete="name">
             <label for="profilePhone">Phone</label>
             <input id="profilePhone" autocomplete="tel">
+            <label for="profileAltPhone">Alternative phone</label>
+            <input id="profileAltPhone" autocomplete="tel">
             <label for="profileCity">City / town</label>
             <input id="profileCity" autocomplete="address-level2" placeholder="Cape Town">
             <label for="profileProvince">Province</label>
@@ -154,10 +157,12 @@
               <option>Free State</option><option>Gauteng</option><option>KwaZulu-Natal</option>
               <option>Limpopo</option><option>Mpumalanga</option><option>North West</option>
             </select>
+            <label for="profileAddress">Address / location</label>
+            <textarea id="profileAddress" rows="2" placeholder="Optional"></textarea>
             <label for="profileHeadline">Career goal / headline</label>
             <input id="profileHeadline" placeholder="e.g. Entry-level administration candidate">
-            <label for="profileSummary">Evidence-based professional summary</label>
-            <textarea id="profileSummary" rows="4" placeholder="Describe your real experience, strengths and goals."></textarea>
+            <label for="profileSummary">Professional summary</label>
+            <textarea id="profileSummary" rows="4" placeholder="Optional. Describe your real experience, strengths and goals."></textarea>
             <label class="checkbox-row"><input id="profileMatriculant" type="checkbox"> I am a matriculant / recent school leaver</label>
             <button class="button" type="submit">Save profile</button>
             <p id="profileResult" aria-live="polite"></p>
@@ -167,9 +172,9 @@
             <form id="experienceForm" class="workspace-form compact-form">
               <h3>Add experience</h3>
               <label for="experienceEmployer">Employer / organisation</label>
-              <input id="experienceEmployer" required>
+              <input id="experienceEmployer">
               <label for="experienceTitle">Role / position</label>
-              <input id="experienceTitle" required>
+              <input id="experienceTitle">
               <label for="experienceDescription">What you actually did</label>
               <textarea id="experienceDescription" rows="3"></textarea>
               <button class="button button-small" type="submit">Add experience</button>
@@ -179,9 +184,9 @@
             <form id="educationForm" class="workspace-form compact-form">
               <h3>Add education</h3>
               <label for="educationInstitution">Institution / school</label>
-              <input id="educationInstitution" required>
+              <input id="educationInstitution">
               <label for="educationQualification">Qualification</label>
-              <input id="educationQualification" required placeholder="e.g. National Senior Certificate">
+              <input id="educationQualification" placeholder="e.g. National Senior Certificate">
               <label for="educationField">Field / subjects</label>
               <input id="educationField">
               <button class="button button-small" type="submit">Add education</button>
@@ -191,7 +196,7 @@
             <form id="skillForm" class="workspace-form compact-form">
               <h3>Add evidence-backed skill</h3>
               <label for="skillName">Skill</label>
-              <input id="skillName" required placeholder="e.g. Microsoft Excel">
+              <input id="skillName" placeholder="e.g. Microsoft Excel">
               <label for="skillEvidence">Evidence</label>
               <textarea id="skillEvidence" rows="2" placeholder="Where did you use or demonstrate this skill?"></textarea>
               <button class="button button-small" type="submit">Add skill</button>
@@ -202,33 +207,222 @@
       </div>
 
       <div class="app-view" data-app-view="cv" hidden>
-        <p class="eyebrow">ATS CV BUILDER</p>
-        <h2>Build from verified candidate evidence</h2>
+        <p class="eyebrow">EXPANDED CV BUILDER</p>
+        <h2>Manual CV + AI role-specific CVs</h2>
         <div class="research-note">
-          <strong>Truth rule:</strong> CareerLaunch uses your saved profile, education, experience and skills. It will not add qualifications, licences, employers or achievements you did not provide.
+          <strong>ATS-friendly, not “ATS guaranteed”:</strong> CareerLaunch uses a conventional text-first structure and truthful evidence. No platform can guarantee acceptance by every employer's ATS.
         </div>
-        <form id="cvForm" class="workspace-form wide-form">
-          <label for="cvMode">CV mode</label>
-          <select id="cvMode">
-            <option value="general">General professional CV</option>
-            <option value="job">Job-specific CV</option>
-            <option value="matriculant">Matriculant / first-job CV</option>
-          </select>
-          <label for="cvTarget">Target role</label>
-          <input id="cvTarget" placeholder="e.g. Sales Assistant">
-          <label for="cvExtraEvidence">Extra evidence to include</label>
-          <textarea id="cvExtraEvidence" rows="4" placeholder="Optional truthful achievements, projects, volunteering or responsibilities not yet saved."></textarea>
-          <p id="selectedOpportunityNote" class="status-card" hidden></p>
-          <button class="button" type="submit">Build & save application pack</button>
-          <p id="cvResult" aria-live="polite"></p>
-        </form>
-        <div id="cvPreview" class="document-preview" hidden aria-live="polite"></div>
+
+        <section class="cv-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">1. CAREER DIRECTION</p>
+              <h3>Choose roles, strengths and skills</h3>
+            </div>
+            <p class="muted">Search, select several options, or choose Other. Selecting an item never claims you possess it until you save or use it.</p>
+          </div>
+
+          <div class="multi-grid">
+            <div class="multi-select" data-multi="roles">
+              <label for="roleSearch">Interested roles</label>
+              <input id="roleSearch" type="search" autocomplete="off" placeholder="Search roles">
+              <div id="roleOptions" class="option-menu" hidden></div>
+              <div id="roleChips" class="chip-list"></div>
+              <div id="roleOtherWrap" hidden>
+                <label for="roleOther">Other role</label>
+                <input id="roleOther" placeholder="Type another role">
+              </div>
+            </div>
+
+            <div class="multi-select" data-multi="strengths">
+              <label for="strengthSearch">Strengths</label>
+              <input id="strengthSearch" type="search" autocomplete="off" placeholder="Search strengths">
+              <div id="strengthOptions" class="option-menu" hidden></div>
+              <div id="strengthChips" class="chip-list"></div>
+              <div id="strengthOtherWrap" hidden>
+                <label for="strengthOther">Other strength</label>
+                <input id="strengthOther" placeholder="Type another strength">
+              </div>
+            </div>
+
+            <div class="multi-select" data-multi="skills">
+              <label for="skillSearchCv">Skills</label>
+              <input id="skillSearchCv" type="search" autocomplete="off" placeholder="Search skills">
+              <div id="skillOptionsCv" class="option-menu" hidden></div>
+              <div id="skillChipsCv" class="chip-list"></div>
+              <div id="skillOtherWrap" hidden>
+                <label for="skillOtherCv">Other skill</label>
+                <input id="skillOtherCv" placeholder="Type another skill">
+              </div>
+            </div>
+          </div>
+
+          <label class="checkbox-row"><input id="noExperienceYet" type="checkbox"> I have no formal work experience yet</label>
+          <label class="checkbox-row"><input id="firstJobMode" type="checkbox"> I am looking for my first job / school-leaver CV</label>
+
+          <label for="cvExperienceNotes">Experience, volunteering, projects, responsibilities or activities</label>
+          <textarea id="cvExperienceNotes" rows="5" placeholder="Optional typing block. School leavers can include school projects, leadership, volunteering, sports, clubs, family responsibilities or practical activities if they are true."></textarea>
+        </section>
+
+        <section class="cv-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">2. MANUAL CV</p>
+              <h3>Complete conventional CV structure</h3>
+            </div>
+            <p class="muted">All fields are optional so applicants can move on to vacancies without being blocked.</p>
+          </div>
+
+          <form id="manualCvForm" class="workspace-form full-form">
+            <h4>Curriculum Vitae of</h4>
+            <div class="form-grid">
+              <label>Full name
+                <input id="manualName" autocomplete="name">
+              </label>
+              <label>Email
+                <input id="manualEmail" type="email" autocomplete="email">
+              </label>
+              <label>Phone
+                <input id="manualPhone" autocomplete="tel">
+              </label>
+              <label>Alternative phone
+                <input id="manualAltPhone" autocomplete="tel">
+              </label>
+              <label>City / location
+                <input id="manualLocation" autocomplete="address-level2">
+              </label>
+              <label>Address
+                <input id="manualAddress" autocomplete="street-address">
+              </label>
+            </div>
+
+            <label for="manualSummary">Professional summary</label>
+            <textarea id="manualSummary" rows="5"></textarea>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h4>Previous work experience</h4>
+                <button id="addManualExperience" type="button" class="button button-secondary button-small">Add work experience</button>
+              </div>
+              <div id="manualExperienceEditor" hidden>
+                <div class="form-grid">
+                  <label>Employer<input id="manualExperienceEmployer"></label>
+                  <label>Position<input id="manualExperienceTitle"></label>
+                  <label>Start date<input id="manualExperienceStart" type="date"></label>
+                  <label>End date<input id="manualExperienceEnd" type="date"></label>
+                  <label>Location<input id="manualExperienceLocation"></label>
+                </div>
+                <label>Duties / achievements<textarea id="manualExperienceDescription" rows="4"></textarea></label>
+                <button id="saveManualExperience" type="button" class="button button-small">Save experience</button>
+              </div>
+              <div id="manualExperienceList" class="record-list"></div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h4>Education</h4>
+                <button id="addManualEducation" type="button" class="button button-secondary button-small">Add education</button>
+              </div>
+              <div id="manualEducationEditor" hidden>
+                <div class="form-grid">
+                  <label>Institution<input id="manualEducationInstitution"></label>
+                  <label>Qualification<input id="manualEducationQualification"></label>
+                  <label>Field of study<input id="manualEducationField"></label>
+                  <label>Status / result<input id="manualEducationStatus"></label>
+                </div>
+                <label>Subjects / major subjects<input id="manualEducationSubjects" placeholder="Separate with commas"></label>
+                <button id="saveManualEducation" type="button" class="button button-small">Save education</button>
+              </div>
+              <div id="manualEducationList" class="record-list"></div>
+            </div>
+
+            <div class="form-grid">
+              <label>Languages
+                <input id="manualLanguages" placeholder="e.g. English, Afrikaans, isiXhosa">
+              </label>
+              <label>Availability
+                <input id="manualAvailability" placeholder="e.g. Immediately / 2 weeks notice">
+              </label>
+            </div>
+
+            <label for="manualReferences">References</label>
+            <textarea id="manualReferences" rows="4" placeholder="Optional. One reference per line or write 'Available on request'."></textarea>
+
+            <div class="action-row">
+              <button class="button" type="submit">Save CV draft to cloud</button>
+              <button id="previewManualCv" class="button button-secondary" type="button">Preview CV</button>
+            </div>
+            <p id="manualCvResult" aria-live="polite"></p>
+          </form>
+
+          <div id="manualCvPreview" class="document-preview" hidden></div>
+          <div id="manualExportActions" class="action-row" hidden>
+            <button id="saveManualPdf" class="button button-secondary" type="button">Save / Print PDF</button>
+            <button id="saveManualDocx" class="button button-secondary" type="button">Save DOCX</button>
+          </div>
+        </section>
+
+        <section class="cv-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">3. UPLOAD CV OR DOCUMENTS</p>
+              <h3>Add existing evidence</h3>
+            </div>
+            <p class="muted">Private uploads are stored in your own protected folder. PDF, DOCX, DOC, TXT, JPG and PNG are accepted up to 15 MB.</p>
+          </div>
+          <form id="documentUploadForm" class="workspace-form full-form">
+            <label for="documentType">Document type</label>
+            <select id="documentType">
+              <option value="cv">CV / Resume</option>
+              <option value="certificate">Certificate</option>
+              <option value="qualification">Qualification</option>
+              <option value="reference">Reference letter</option>
+              <option value="other">Other</option>
+            </select>
+            <label for="documentFile">Choose document</label>
+            <input id="documentFile" type="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
+            <button class="button" type="submit">Upload document</button>
+            <p id="documentUploadResult" aria-live="polite"></p>
+          </form>
+          <div id="documentList" class="record-list"></div>
+        </section>
+
+        <section class="cv-section ai-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">4. AI CV GENERATOR</p>
+              <h3>Generate a role-specific ATS-friendly CV</h3>
+            </div>
+            <p class="muted">The AI reads your saved manual CV, profile, evidence and extractable uploaded document text. It must not invent qualifications, employers, licences or achievements.</p>
+          </div>
+
+          <form id="aiCvForm" class="workspace-form full-form">
+            <label for="aiVacancySelect">Vacancy</label>
+            <select id="aiVacancySelect">
+              <option value="">No vacancy selected — use my prompt / target roles</option>
+            </select>
+
+            <label for="aiPrompt">Tell CareerLaunch what CV you want</label>
+            <textarea id="aiPrompt" rows="6" placeholder="Example: Create a concise first-job CV for retail sales. Emphasise customer service, reliability and my school leadership experience, but do not invent work history."></textarea>
+
+            <div id="selectedOpportunityNote" class="status-card" hidden></div>
+            <button class="button" type="submit">Generate AI CV</button>
+            <p id="aiCvResult" aria-live="polite"></p>
+          </form>
+
+          <div id="aiCvPreview" class="document-preview" hidden></div>
+          <div id="aiExportActions" class="action-row" hidden>
+            <button id="saveAiPdf" class="button button-secondary" type="button">Save / Print PDF</button>
+            <button id="saveAiDocx" class="button button-secondary" type="button">Save DOCX</button>
+            <button id="saveAiPack" class="button" type="button">Save application pack</button>
+          </div>
+        </section>
       </div>
 
       <div class="app-view" data-app-view="jobs" hidden>
         <p class="eyebrow">VERIFIED OPPORTUNITIES</p>
         <h2>Live research from official and employer sources</h2>
-        <p class="muted">Every displayed record includes the source and last verification time. Always re-check the official page immediately before submitting.</p>
+        <p class="muted">Every displayed record includes the source and last verification time. Expired dated listings are hidden from active results even before the next research refresh.</p>
         <div class="filter-row">
           <label>Type
             <select id="opportunityTypeFilter">
@@ -258,6 +452,18 @@
         </div>
         <div id="opportunityStatus" class="status-card" aria-live="polite">Loading verified opportunities…</div>
         <div id="opportunityList" class="opportunity-list"></div>
+      </div>
+
+      <div class="app-view" data-app-view="shortlist" hidden>
+        <p class="eyebrow">SHORTLISTED VACANCIES</p>
+        <h2>Your five priority applications</h2>
+        <p class="muted">Save up to five opportunities. From here you can open the source, remove a vacancy, or generate a role-specific AI CV.</p>
+        <div class="shortlist-toolbar">
+          <strong id="shortlistCount">0 / 5 saved</strong>
+          <button id="generateShortlistCvs" class="button button-secondary" type="button">Generate CVs for shortlist</button>
+        </div>
+        <p id="shortlistStatus" class="status-card" aria-live="polite">Loading shortlist…</p>
+        <div id="shortlistList" class="opportunity-list"></div>
       </div>
 
       <div class="app-view" data-app-view="study" hidden>
@@ -296,6 +502,7 @@
 
   <footer id="publicFooter">CareerLaunch SA — Built for opportunity, dignity and action.</footer>
   <script src="/runtime-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js" defer></script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
