@@ -225,3 +225,27 @@ test('conversation mode and vacancy reader are server-side protected',async()=>{
   assert.ok(edge.includes('form_completion_markdown'));
   assert.ok(edge.includes('gpt-6-luna'));
 });
+
+
+test('vacancy adverts and forms are separated from candidate evidence',async()=>{
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const edge=await readFile(edgeUrl,'utf8');
+  assert.ok(html.includes('value="vacancy_advert"'));
+  assert.ok(edge.includes('candidateDocumentEvidence'));
+  assert.ok(edge.includes('vacancyDocumentEvidence'));
+  assert.ok(edge.includes('formDocumentEvidence'));
+  assert.ok(edge.includes('["cv","certificate","qualification","reference"]'));
+  assert.ok(edge.includes('vacancy_documents'));
+  assert.ok(edge.includes('application_form_documents'));
+});
+
+test('generated application packages export complete components',async()=>{
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  for(const id of ['saveAiPackagePdf','saveAiPackageDocx','saveAiPackageTxt']){
+    assert.ok(html.includes(`id="${id}"`),id);
+  }
+  assert.ok(js.includes('buildApplicationPackageText'));
+  assert.ok(js.includes('FORM COMPLETION WORKSHEET'));
+  assert.ok(js.includes('MOTIVATIONAL LETTER'));
+});
