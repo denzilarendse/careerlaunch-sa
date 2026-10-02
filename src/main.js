@@ -77,6 +77,21 @@ function readSession(){
   }
 }
 
+async function revokeSession(session){
+  if(!session?.session_token)return;
+  const config=authConfig();
+  const response=await fetch(`${config.SUPABASE_URL}/auth/v1/logout`,{
+    method:'POST',
+    headers:{
+      apikey:config.SUPABASE_PUBLISHABLE_KEY,
+      Authorization:`Bearer ${session.session_token}`
+    }
+  });
+  if(!response.ok&&response.status!==401){
+    throw new Error(`Sign out request failed (${response.status})`);
+  }
+}
+
 async function ensureSession(){
   const session=readSession();
   if(!session?.session_token)return null;
@@ -217,8 +232,15 @@ async function enterApp(){
   await loadWorkspaceData();
 }
 
-function leaveApp(){
-  localStorage.removeItem(SESSION_KEY);
+async function leaveApp(){
+  const session=readSession();
+  try{
+    await revokeSession(session);
+  }catch(error){
+    console.warn('CareerLaunch remote sign out could not be confirmed',error);
+  }finally{
+    localStorage.removeItem(SESSION_KEY);
+  }
   Object.assign(state,{
     profile:null,
     experience:[],
@@ -247,7 +269,15 @@ document.querySelectorAll('.app-nav-button').forEach(button=>{
 document.querySelectorAll('[data-go]').forEach(button=>{
   button.addEventListener('click',()=>switchView(button.dataset.go));
 });
-document.querySelector('#signOutBtn')?.addEventListener('click',leaveApp);
+document.querySelector('#signOutBtn')?.addEventListener('click',async event=>{
+  const button=event.currentTarget;
+  button.disabled=true;
+  try{
+    await leaveApp();
+  }finally{
+    button.disabled=false;
+  }
+});
 
 if('serviceWorker'in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
