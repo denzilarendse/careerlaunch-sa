@@ -18,6 +18,11 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      - name: Verify release identity
+        run: |
+          test -s dist/release.json
+          node -e "const r=require('./dist/release.json'); if(r.build_id!==process.env.GITHUB_SHA) process.exit(1); console.log(r)"
+
       - name: Upload Netlify-ready site
         uses: actions/upload-artifact@v4
         with:
