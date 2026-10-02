@@ -1,0 +1,92 @@
+name: Netlify Production Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: careerlaunch-netlify-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      PRODUCTION_URL: https://careerlaunchsa.netlify.app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+
+      - name: Check Netlify credentials
+        id: creds
+        shell: bash
+        run: |
+          if [ -n "${NETLIFY_AUTH_TOKEN}" ] && [ -n "${NETLIFY_SITE_ID}" ]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+            echo "Netlify production credentials are configured."
+          else
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Netlify deployment skipped because NETLIFY_AUTH_TOKEN and/or NETLIFY_SITE_ID is not configured in GitHub Actions secrets."
+          fi
+
+      - name: Install dependencies
+        if: steps.creds.outputs.configured == 'true'
+        run: npm install --no-audit --no-fund
+
+      - name: Verify application
+        if: steps.creds.outputs.configured == 'true'
+        run: |
+          npm run check
+          npm test
+          npm run build
+          node -e "const r=require('./dist/release.json'); if(r.build_id!==process.env.GITHUB_SHA) process.exit(1); console.log('Release identity:',r.build_id)"
+
+      - name: Deploy exact build to Netlify production
+        if: steps.creds.outputs.configured == 'true'
+        run: |
+          npx --yes netlify-cli@27.10.2 deploy \
+            --prod \
+            --dir=dist \
+            --site "${NETLIFY_SITE_ID}" \
+            --auth "${NETLIFY_AUTH_TOKEN}" \
+            --message "CareerLaunch SA ${GITHUB_SHA}"
+
+      - name: Verify canonical production release
+        if: steps.creds.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="${GITHUB_SHA}"
+          for attempt in 1 2 3 4 5 6; do
+            BODY="$(curl -fsSL --connect-timeout 10 --max-time 30 "${PRODUCTION_URL}/release.json?sha=${EXPECTED}" || true)"
+            ACTUAL="$(printf '%s' "${BODY}" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{console.log(JSON.parse(s).build_id||'')}catch{console.log('')}})")"
+            if [ "${ACTUAL}" = "${EXPECTED}" ]; then
+              echo "Verified production release ${ACTUAL}"
+              exit 0
+            fi
+            echo "Attempt ${attempt}: production release is '${ACTUAL:-missing}', expected '${EXPECTED}'."
+            sleep 5
+          done
+          echo "::error::Canonical Netlify production did not expose the expected release identity."
+          exit 1
+
+      - name: Deployment status
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.creds.outputs.configured }}" = "true" ]; then
+            echo "Netlify credentials were present; inspect previous deploy/verification steps for final status."
+          else
+            echo "Netlify credentials are not available to this workflow. Add NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID as repository Actions secrets to enable autonomous production deploys."
+          fi
