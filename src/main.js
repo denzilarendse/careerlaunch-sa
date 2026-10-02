@@ -1396,7 +1396,9 @@ document.querySelector('#aiCvForm')?.addEventListener('submit',async event=>{
     });
     state.generatedAi={...result,opportunity_id:opportunityId};
     renderAiPreview();
-    output.textContent='AI draft generated. Review every fact before saving or applying.';
+    output.textContent=result.generation_mode==='structured_fallback'
+      ?'Structured evidence-only draft generated. The external AI provider was unavailable or not configured; review every fact before saving or applying.'
+      :'AI draft generated. Review every fact before saving or applying.';
   }catch(error){
     output.textContent=error.message||'AI CV generation is unavailable right now.';
   }finally{
@@ -1408,7 +1410,17 @@ function renderAiPreview(){
   const preview=document.querySelector('#aiCvPreview');
   if(!preview||!state.generatedAi)return;
   clear(preview);
-  preview.append(make('h3',{text:'AI-generated CV draft'}),make('pre',{text:state.generatedAi.cv_markdown||''}));
+  const fallback=state.generatedAi.generation_mode==='structured_fallback';
+  preview.append(
+    make('h3',{text:fallback?'Structured evidence-only CV draft':'AI-generated CV draft'}),
+    make('pre',{text:state.generatedAi.cv_markdown||''})
+  );
+  if(fallback){
+    preview.append(make('p',{
+      className:'muted',
+      text:'This draft was built from your saved evidence without external AI inference. It does not invent missing facts.'
+    }));
+  }
   if(state.generatedAi.cover_letter_markdown){
     preview.append(make('h3',{text:'Cover letter draft'}),make('pre',{text:state.generatedAi.cover_letter_markdown}));
   }
