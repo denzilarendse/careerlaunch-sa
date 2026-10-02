@@ -147,3 +147,12 @@ test('OpenAI Responses API defaults are server-side and overrideable',async()=>{
   assert.ok(edge.includes('extractResponseText'));
   assert.equal(/CAREERLAUNCH_AI_API_KEY\s*[:=]\s*['"][^'"]+['"]/i.test(edge),false);
 });
+
+
+test('safe generation telemetry distinguishes AI from fallback',async()=>{
+  const edge=await readFile(edgeUrl,'utf8');
+  assert.ok(edge.includes('careerlaunch_generate_cv'));
+  assert.ok(edge.includes('mode:"ai_provider"'));
+  assert.ok(edge.includes('mode:"structured_fallback"'));
+  assert.equal(/console\.log\([^\n]*(apiKey|session_token|Authorization)/.test(edge),false);
+});
