@@ -156,3 +156,60 @@ test('safe generation telemetry distinguishes AI from fallback',async()=>{
   assert.ok(edge.includes('mode:"structured_fallback"'));
   assert.equal(/console\.log\([^\n]*(apiKey|session_token|Authorization)/.test(edge),false);
 });
+
+
+test('profile records can be removed under owner RLS',async()=>{
+  const js=await readFile(jsUrl,'utf8');
+  assert.ok(js.includes("candidate_experience"));
+  assert.ok(js.includes("candidate_education"));
+  assert.ok(js.includes("candidate_skills"));
+  assert.ok(js.includes("removeOwnedRecord"));
+  assert.ok(js.includes("method:'DELETE'"));
+});
+
+test('profile and CV role selectors support multiple searchable choices',async()=>{
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  for(const id of ['profileRoleSearch','profileRoleOptions','profileRoleChips','roleSearch','strengthSearch','skillSearchCv']){
+    assert.ok(html.includes(`id="${id}"`),id);
+  }
+  assert.ok(js.includes("key:'profileRoles'"));
+  assert.ok(js.includes("selectionValues('profileRoles')"));
+});
+
+test('AI career assistant supports conversation vacancy links and fresh-details mode',async()=>{
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  for(const id of ['aiChatMessages','aiChatForm','aiDetailSource','aiVacancyUrl','aiVacancyUrlBtn','aiGenerateFinal']){
+    assert.ok(html.includes(`id="${id}"`),id);
+  }
+  assert.ok(js.includes("mode:'assistant'"));
+  assert.ok(js.includes("mode:'fetch_vacancy'"));
+  assert.ok(js.includes("use_existing_details"));
+  assert.ok(js.includes("conversation:state.aiConversation"));
+});
+
+test('library, job sites, forms and applied-shortlist transition are wired',async()=>{
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  const catalog=await readFile(new URL('../src/resource-catalog.js',import.meta.url),'utf8');
+  for(const phrase of ['data-view="sites"','data-view="library"','DOCUMENT LIBRARY','MAJOR VACANCY WEBSITES']){
+    assert.ok(html.includes(phrase),phrase);
+  }
+  assert.ok(js.includes('renderJobSites'));
+  assert.ok(js.includes('renderLibrary'));
+  assert.ok(js.includes('markOpportunityApplied'));
+  assert.ok(catalog.includes('LinkedIn Jobs'));
+  assert.ok(catalog.includes('Z83 Application for Employment'));
+});
+
+test('manual and AI CVs expose PDF DOCX and TXT export paths',async()=>{
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  assert.ok(html.includes('saveManualPdf'));
+  assert.ok(html.includes('saveManualDocx'));
+  assert.ok(html.includes('saveAiPdf'));
+  assert.ok(html.includes('saveAiDocx'));
+  assert.ok(html.includes('saveAiTxt'));
+  assert.ok(js.includes('createTxtBlob'));
+});
