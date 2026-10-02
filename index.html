@@ -104,6 +104,8 @@
         <button type="button" class="app-nav-button" data-view="jobs">Opportunities</button>
         <button type="button" class="app-nav-button" data-view="shortlist">Shortlisted</button>
         <button type="button" class="app-nav-button" data-view="study">Study & Funding</button>
+        <button type="button" class="app-nav-button" data-view="sites">Job Sites</button>
+        <button type="button" class="app-nav-button" data-view="library">Library</button>
         <button type="button" class="app-nav-button" data-view="applications">Applications</button>
       </nav>
 
@@ -159,8 +161,17 @@
             </select>
             <label for="profileAddress">Address / location</label>
             <textarea id="profileAddress" rows="2" placeholder="Optional"></textarea>
-            <label for="profileHeadline">Career goal / headline</label>
-            <input id="profileHeadline" placeholder="e.g. Entry-level administration candidate">
+            <label for="profileRoleSearch">Career choices / headline</label>
+            <div class="multi-select profile-career-select" data-multi="profileRoles">
+              <input id="profileRoleSearch" type="search" autocomplete="off" placeholder="Search or tap to choose career roles">
+              <div id="profileRoleOptions" class="option-menu" hidden></div>
+              <div id="profileRoleChips" class="chip-list"></div>
+              <div id="profileRoleOtherWrap" hidden>
+                <label for="profileRoleOther">Other career role</label>
+                <input id="profileRoleOther" placeholder="Type another role">
+              </div>
+            </div>
+            <p class="field-help">Choose more than one role if you are open to several career paths.</p>
             <label for="profileSummary">Professional summary</label>
             <textarea id="profileSummary" rows="4" placeholder="Optional. Describe your real experience, strengths and goals."></textarea>
             <label class="checkbox-row"><input id="profileMatriculant" type="checkbox"> I am a matriculant / recent school leaver</label>
@@ -359,7 +370,7 @@
           </form>
 
           <div id="manualCvPreview" class="document-preview" hidden></div>
-          <div id="manualExportActions" class="action-row" hidden>
+          <div id="manualExportActions" class="action-row">
             <button id="saveManualPdf" class="button button-secondary" type="button">Save PDF locally</button>
             <button id="saveManualDocx" class="button button-secondary" type="button">Save DOCX locally</button>
             <button id="saveManualCloudPdf" class="button button-secondary" type="button">Save PDF to cloud</button>
@@ -382,6 +393,8 @@
               <option value="certificate">Certificate</option>
               <option value="qualification">Qualification</option>
               <option value="reference">Reference letter</option>
+              <option value="application_form">Application form</option>
+              <option value="personal_document">Personal / ID document</option>
               <option value="other">Other</option>
             </select>
             <label for="documentFile">Choose document</label>
@@ -392,39 +405,85 @@
           <div id="documentList" class="record-list"></div>
         </section>
 
-        <section class="cv-section ai-section">
+        <section class="cv-section ai-section" id="aiCvAssistant">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">4. AI CV GENERATOR</p>
-              <h3>Generate a role-specific ATS-friendly CV</h3>
+              <p class="eyebrow">4. AI CAREER ASSISTANT</p>
+              <h3>Build a complete role-specific application package through conversation</h3>
             </div>
-            <p class="muted">The AI reads your saved manual CV, profile, evidence and extractable uploaded document text. It must not invent qualifications, employers, licences or achievements.</p>
+            <p class="muted">CareerLaunch AI can use your saved profile and uploaded documents, or start fresh and ask for the details it needs. It produces ATS-friendly drafts, not guaranteed ATS approval.</p>
           </div>
 
-          <form id="aiCvForm" class="workspace-form full-form">
-            <label for="aiVacancySelect">Vacancy</label>
-            <select id="aiVacancySelect">
-              <option value="">No vacancy selected — use my prompt / target roles</option>
-            </select>
+          <div class="ai-assistant-grid">
+            <div class="ai-chat-panel">
+              <div id="aiChatMessages" class="ai-chat-messages" aria-live="polite">
+                <article class="chat-bubble assistant">
+                  <strong>CareerLaunch AI</strong>
+                  <p>Tell me what you want to apply for. You can choose a CareerLaunch vacancy, paste an advert, add a vacancy link, or simply tell me the role. I will ask only for the missing information needed to prepare your application.</p>
+                </article>
+              </div>
 
-            <label for="aiVacancyText">Or paste a vacancy description / requirements</label>
-            <textarea id="aiVacancyText" rows="5" placeholder="Use this for a vacancy that is not yet in CareerLaunch. Vacancy text is treated as employer requirements, never as facts about you."></textarea>
+              <form id="aiChatForm" class="ai-chat-form">
+                <label for="aiChatInput">Reply to CareerLaunch AI</label>
+                <textarea id="aiChatInput" rows="4" placeholder="Example: I want to apply for an admin clerk position. Use my saved CV, but ask me if anything important is missing."></textarea>
+                <button class="button" type="submit">Send to AI assistant</button>
+              </form>
+            </div>
 
-            <label for="aiPrompt">Tell CareerLaunch what CV you want</label>
-            <textarea id="aiPrompt" rows="6" placeholder="Example: Create a concise first-job CV for retail sales. Emphasise customer service, reliability and my school leadership experience, but do not invent work history."></textarea>
+            <form id="aiCvForm" class="workspace-form ai-context-panel">
+              <h4>Application context</h4>
+              <label for="aiDetailSource">Applicant details</label>
+              <select id="aiDetailSource">
+                <option value="saved">Use my saved CareerLaunch profile, CV and uploaded evidence</option>
+                <option value="fresh">Start fresh — ask me for the details</option>
+              </select>
 
-            <div id="selectedOpportunityNote" class="status-card" hidden></div>
-            <button class="button" type="submit">Generate AI CV</button>
-            <p id="aiCvResult" aria-live="polite"></p>
-          </form>
+              <label for="aiApplicationKind">Application type</label>
+              <select id="aiApplicationKind">
+                <option value="job">Job application</option>
+                <option value="executive">Professional / executive CV</option>
+                <option value="school_leaver">School-leaver / first-job CV</option>
+                <option value="learnership">Learnership</option>
+                <option value="internship">Internship</option>
+                <option value="bursary">Bursary / funding</option>
+                <option value="scholarship">Scholarship</option>
+                <option value="government">Government / Z83 application</option>
+                <option value="form">Uploaded application form</option>
+              </select>
+
+              <label for="aiVacancySelect">CareerLaunch vacancy</label>
+              <select id="aiVacancySelect">
+                <option value="">No CareerLaunch vacancy selected</option>
+              </select>
+
+              <label for="aiVacancyUrl">Vacancy / advert link</label>
+              <input id="aiVacancyUrl" type="url" inputmode="url" placeholder="https://official-employer-site.example/job">
+              <button id="aiVacancyUrlBtn" class="button button-secondary button-small" type="button">Check vacancy link</button>
+              <p id="aiVacancyUrlStatus" class="muted" aria-live="polite"></p>
+
+              <label for="aiVacancyText">Vacancy description / requirements</label>
+              <textarea id="aiVacancyText" rows="6" placeholder="Paste the advert here, or let CareerLaunch fill this from a supported vacancy link. Employer requirements are never treated as facts about you."></textarea>
+
+              <label for="aiPrompt">Extra instructions</label>
+              <textarea id="aiPrompt" rows="4" placeholder="Example: Keep it concise, professional and suitable for an entry-level retail application."></textarea>
+
+              <div id="selectedOpportunityNote" class="status-card" hidden></div>
+              <div class="action-row">
+                <button id="aiStartConversation" class="button button-secondary" type="button">Start / restart interview</button>
+                <button id="aiGenerateFinal" class="button" type="submit">Generate complete package</button>
+              </div>
+              <p id="aiCvResult" aria-live="polite"></p>
+            </form>
+          </div>
 
           <div id="aiCvPreview" class="document-preview" hidden></div>
           <div id="aiExportActions" class="action-row" hidden>
-            <button id="saveAiPdf" class="button button-secondary" type="button">Save PDF locally</button>
-            <button id="saveAiDocx" class="button button-secondary" type="button">Save DOCX locally</button>
-            <button id="saveAiCloudPdf" class="button button-secondary" type="button">Save PDF to cloud</button>
-            <button id="saveAiCloudDocx" class="button button-secondary" type="button">Save DOCX to cloud</button>
-            <button id="saveAiPack" class="button" type="button">Save application pack</button>
+            <button id="saveAiPdf" class="button button-secondary" type="button">Save CV PDF</button>
+            <button id="saveAiDocx" class="button button-secondary" type="button">Save CV DOCX</button>
+            <button id="saveAiTxt" class="button button-secondary" type="button">Save CV TXT</button>
+            <button id="saveAiCloudPdf" class="button button-secondary" type="button">Save CV PDF to Library</button>
+            <button id="saveAiCloudDocx" class="button button-secondary" type="button">Save CV DOCX to Library</button>
+            <button id="saveAiPack" class="button" type="button">Save full application pack</button>
           </div>
         </section>
       </div>
@@ -459,9 +518,23 @@
           <label>Search
             <input id="opportunitySearch" type="search" placeholder="Role, organisation or location">
           </label>
+          <div class="filter-actions">
+            <button id="opportunitySearchBtn" class="button button-small" type="button">Search</button>
+            <button id="opportunityResetBtn" class="button button-secondary button-small" type="button">Reset</button>
+          </div>
         </div>
         <div id="opportunityStatus" class="status-card" aria-live="polite">Loading verified opportunities…</div>
         <div id="opportunityList" class="opportunity-list"></div>
+      </div>
+
+      <div class="app-view" data-app-view="sites" hidden>
+        <p class="eyebrow">MAJOR VACANCY WEBSITES</p>
+        <h2>Search the wider South African job market</h2>
+        <p class="muted">CareerLaunch can prepare a CV, cover letter and application pack for roles found on these platforms. Final submission stays on the external platform unless an approved API or OAuth integration is available.</p>
+        <div id="jobSiteList" class="job-site-grid"></div>
+        <div class="research-note">
+          <strong>Direct-apply boundary:</strong> CareerLaunch will not automate logins, bypass platform controls, or submit applications to third-party job sites without an approved integration and your explicit action.
+        </div>
       </div>
 
       <div class="app-view" data-app-view="shortlist" hidden>
@@ -480,6 +553,9 @@
         <p class="eyebrow">STUDY & FUNDING</p>
         <h2>Funding and post-school pathways</h2>
         <p class="muted">Current bursary, scholarship and study-funding records are drawn from the same verified research store as the Opportunities tab.</p>
+        <div class="action-row">
+          <button id="studyAiAssistantBtn" class="button button-secondary" type="button">Open AI funding / motivation-letter assistant</button>
+        </div>
         <div id="studyList" class="opportunity-list" aria-live="polite">Loading funding opportunities…</div>
         <section class="research-panel">
           <div>
@@ -492,6 +568,39 @@
             <li>Do not send passwords, PINs or OTPs with an application.</li>
             <li>Keep reference numbers and submission confirmations for your tracker.</li>
           </ul>
+        </section>
+      </div>
+
+      <div class="app-view" data-app-view="library" hidden>
+        <p class="eyebrow">DOCUMENT LIBRARY</p>
+        <h2>Your CVs, application packs and supporting documents</h2>
+        <p class="muted">Generated application packs and uploaded documents remain private to your account. Keep only documents you are comfortable storing online.</p>
+
+        <div class="library-tabs" role="tablist" aria-label="Library categories">
+          <button class="library-tab active" type="button" data-library-filter="cvs">CVs & Packs</button>
+          <button class="library-tab" type="button" data-library-filter="evidence">Evidence & Certificates</button>
+          <button class="library-tab" type="button" data-library-filter="personal">Personal Documents</button>
+          <button class="library-tab" type="button" data-library-filter="forms">Forms</button>
+          <button class="library-tab" type="button" data-library-filter="other">Other</button>
+        </div>
+
+        <div class="library-category-builder">
+          <label for="libraryCategoryName">Add your own library category</label>
+          <div class="inline-controls">
+            <input id="libraryCategoryName" placeholder="e.g. Driver documents">
+            <button id="libraryAddCategoryBtn" class="button button-secondary button-small" type="button">Add category</button>
+          </div>
+          <div id="libraryCustomTabs" class="chip-list"></div>
+        </div>
+
+        <div id="libraryStatus" class="status-card" aria-live="polite">Loading your library…</div>
+        <div id="libraryList" class="library-list"></div>
+
+        <section class="cv-section">
+          <p class="eyebrow">OFFICIAL FORMS</p>
+          <h3>Government and opportunity-specific forms</h3>
+          <div id="applicationFormCatalog" class="library-list"></div>
+          <p class="muted">For forms that must be signed, CareerLaunch can prepare answers and check completeness, but it will not sign or make a legal declaration for you.</p>
         </section>
       </div>
 
