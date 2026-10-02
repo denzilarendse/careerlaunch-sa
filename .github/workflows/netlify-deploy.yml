@@ -37,7 +37,8 @@ jobs:
             echo "Netlify production credentials are configured."
           else
             echo "configured=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::Netlify deployment skipped because NETLIFY_AUTH_TOKEN and/or NETLIFY_SITE_ID is not configured in GitHub Actions secrets."
+            echo "::error::Netlify production deployment is blocked because NETLIFY_AUTH_TOKEN and/or NETLIFY_SITE_ID is not configured in GitHub Actions secrets."
+            exit 1
           fi
 
       - name: Install dependencies
@@ -88,5 +89,5 @@ jobs:
           if [ "${{ steps.creds.outputs.configured }}" = "true" ]; then
             echo "Netlify credentials were present; inspect previous deploy/verification steps for final status."
           else
-            echo "Netlify credentials are not available to this workflow. Add NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID as repository Actions secrets to enable autonomous production deploys."
+            echo "Netlify credentials are not available to this workflow. Release remains blocked until NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID are added as repository Actions secrets."
           fi
