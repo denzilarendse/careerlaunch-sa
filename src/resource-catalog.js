@@ -82,3 +82,279 @@ export const APPLICATION_FORMS = [
     note:'The current Z83 is effective from 1 January 2021. DPSA guidance requires the declaration to be signed. CareerLaunch can prepare an answer worksheet and completeness review, but it will not sign or make declarations on your behalf.'
   }
 ];
+
+// Curated starting directory. Price and certificate rules change by course, country and provider;
+// the UI deliberately directs learners to official pricing pages instead of freezing unverified prices.
+export const LEARNING_RESOURCES = [
+  {
+    name:'OpenLearn — The Open University',
+    url:'https://www.open.edu/openlearn/',
+    category:'Free courses',
+    cost:'Free',
+    certificate:'Free statement of participation or digital badge on selected courses; check each course.',
+    recognition:'Open learning; not automatically a formal qualification or accredited credit.',
+    focus:'Study skills, business, health, education, technology and personal development.',
+    audience:'School leavers, adult learners and anyone exploring a subject.',
+    rank:1
+  },
+  {
+    name:'Khan Academy',
+    url:'https://www.khanacademy.org/',
+    category:'Free courses',
+    cost:'Free',
+    certificate:'Primarily practice and progress records, not a general professional certificate.',
+    recognition:'Supplementary learning; not a formal qualification.',
+    focus:'Mathematics, science, computing, economics and foundational skills.',
+    audience:'Grades 10–12 and learners refreshing core subjects.',
+    rank:2
+  },
+  {
+    name:'Saylor Academy',
+    url:'https://www.saylor.org/',
+    category:'Free courses',
+    cost:'Free courses; check current exam and certificate conditions.',
+    certificate:'Course completion certificates may be available; credit transfer depends on the receiving institution.',
+    recognition:'Open courses; do not assume automatic South African qualification equivalence.',
+    focus:'Business, computer science, communication and general education.',
+    audience:'Independent learners and people preparing for further study.',
+    rank:3
+  },
+  {
+    name:'Microsoft Learn',
+    url:'https://learn.microsoft.com/training/',
+    category:'Free courses',
+    cost:'Free learning paths; some official certification exams cost extra.',
+    certificate:'Learning achievements are available; formal Microsoft certification generally requires the relevant exam.',
+    recognition:'Vendor learning and certifications; recognition depends on the role and employer.',
+    focus:'Cloud, Microsoft 365, data, security, AI and developer skills.',
+    audience:'Beginners through technical professionals.',
+    rank:4
+  },
+  {
+    name:'Google Skillshop',
+    url:'https://skillshop.withgoogle.com/',
+    category:'Free courses',
+    cost:'Free training; check the individual credential requirements.',
+    certificate:'Selected Google product certifications are available after passing assessments.',
+    recognition:'Product-specific credentials, not a general academic qualification.',
+    focus:'Digital marketing, Google Ads, Analytics and Google product skills.',
+    audience:'Jobseekers interested in marketing, analytics and digital work.',
+    rank:5
+  },
+  {
+    name:'Cisco Networking Academy',
+    url:'https://www.netacad.com/',
+    category:'Free courses',
+    cost:'Many learning courses are free; course and certification terms vary.',
+    certificate:'Course completion badges/certificates vary; industry certification exams may cost extra.',
+    recognition:'Technology skills training; distinguish course completion from Cisco certification.',
+    focus:'Networking, cybersecurity, programming and digital skills.',
+    audience:'Learners exploring IT support, networking and cybersecurity.',
+    rank:6
+  },
+  {
+    name:'Coursera',
+    url:'https://www.coursera.org/',
+    category:'Free and paid',
+    cost:'Some content can be audited or previewed free; certificates, subscriptions and programmes may cost extra.',
+    certificate:'Usually paid for certificate-bearing courses; financial aid may be available on eligible courses.',
+    recognition:'Provider/university certificates vary; not every course is an accredited qualification.',
+    focus:'University-led courses, professional certificates, business, data and technology.',
+    audience:'Learners seeking structured courses and employer-oriented skills.',
+    rank:7
+  },
+  {
+    name:'edX',
+    url:'https://www.edx.org/',
+    category:'Free and paid',
+    cost:'Many courses offer limited free access; verified certificates and programmes are paid.',
+    certificate:'Verified certificates generally require payment.',
+    recognition:'Course provider and programme determine recognition; check credit and accreditation claims carefully.',
+    focus:'University courses, computer science, business, engineering and professional learning.',
+    audience:'Learners wanting university-style online courses.',
+    rank:8
+  },
+  {
+    name:'Alison',
+    url:'https://alison.com/',
+    category:'Free learning; optional paid extras',
+    cost:'Course learning is commonly free; certificates, diplomas in print/digital formats or premium features may cost extra.',
+    certificate:'Check the current certificate price and format before enrolling.',
+    recognition:'Useful for skills development; do not assume every course is formally accredited or equivalent to a qualification.',
+    focus:'Workplace skills, business, health and safety, IT and personal development.',
+    audience:'Beginners and jobseekers building foundational knowledge.',
+    rank:9
+  },
+  {
+    name:'Udemy',
+    url:'https://www.udemy.com/',
+    category:'Paid courses',
+    cost:'Usually per-course purchase with frequent promotions; prices vary by region and course.',
+    certificate:'Completion certificate on eligible courses; generally not an accredited academic qualification.',
+    recognition:'Course quality and employer value vary; inspect instructor credentials and curriculum.',
+    focus:'Practical software, business, creative and professional skills.',
+    audience:'Learners who want a specific skill or tool.',
+    rank:10
+  },
+  {
+    name:'LinkedIn Learning',
+    url:'https://www.linkedin.com/learning/',
+    category:'Subscription',
+    cost:'Subscription or eligible organisational access; check current South African pricing and trial terms.',
+    certificate:'Course completion certificates can be added to a LinkedIn profile; not equivalent to an accredited qualification.',
+    recognition:'Professional development evidence; value depends on the role and employer.',
+    focus:'Business, project management, office software, leadership and creative technology.',
+    audience:'Students, jobseekers and working professionals.',
+    rank:11
+  },
+  {
+    name:'FutureLearn',
+    url:'https://www.futurelearn.com/',
+    category:'Free and paid',
+    cost:'Access, upgrades and unlimited plans vary by course and current offer.',
+    certificate:'Certificates may require a paid upgrade or plan.',
+    recognition:'Course-specific; check whether academic credit is explicitly offered.',
+    focus:'Short courses from universities and specialist providers.',
+    audience:'Learners exploring a new field or adding focused knowledge.',
+    rank:12
+  }
+];
+
+
+// Official funding portals, not a claim that every programme is currently open.
+// Always re-check the deadline, field, academic threshold and required documents on the provider page.
+export const FUNDING_RESOURCES = [
+  {
+    name:'National Student Financial Aid Scheme (NSFAS)',
+    url:'https://www.nsfas.org.za/',
+    provider:'National student funding',
+    focus:'Eligible students at public universities and TVET colleges, subject to the current funding rules.',
+    coverage:'Funding and allowances depend on the applicable rules and individual eligibility.',
+    audience:'South African students who need financial assistance for eligible study programmes.'
+  },
+  {
+    name:'Funza Lushaka Bursary',
+    url:'https://www.funzalushaka.doe.gov.za/Home/',
+    provider:'Teaching bursary',
+    focus:'Teaching qualifications in priority subject areas.',
+    coverage:'Official guidance describes support for tuition and other eligible study/living costs; confirm the current terms.',
+    audience:'Eligible learners and students committed to qualifying teaching pathways.'
+  },
+  {
+    name:'CSIR Bursaries',
+    url:'https://www.csir.co.za/careers/students-graduates/bursaries',
+    provider:'Science, engineering and research',
+    focus:'Advertised undergraduate and postgraduate programmes in priority science, engineering and technology fields.',
+    coverage:'Programme-specific support may include tuition, accommodation, allowances, mentorship and vacation work.',
+    audience:'Academically qualifying students intending to study at a South African public university.'
+  },
+  {
+    name:'SANRAL External Bursary',
+    url:'https://www.nra.co.za/bursaries',
+    provider:'Engineering, technology and built environment',
+    focus:'Approved fields can include civil engineering, computer science, information systems and selected supply-chain fields.',
+    coverage:'Check the current advert for covered costs, eligibility and return-of-service conditions.',
+    audience:'Students whose intended qualification and results meet the advertised criteria.'
+  },
+  {
+    name:'National Skills Fund',
+    url:'https://nsf.org.za/bursaries-and-scholarships/',
+    provider:'Scarce and critical skills',
+    focus:'Undergraduate and postgraduate bursaries, including scarce-skills and international scholarship information.',
+    coverage:'The fund describes support that can include tuition, books, accommodation, meals and transport; terms depend on the programme.',
+    audience:'Students in eligible qualifications and programmes advertised by the fund or its implementing partners.'
+  },
+  {
+    name:'South African Government — Where to find bursary funding',
+    url:'https://www.gov.za/faq/education/where-can-i-get-bursaryfunds-further-studies',
+    provider:'Government guidance',
+    focus:'Starting point for government bursaries, NSFAS, university funding and other further-study support.',
+    coverage:'Explains funding routes rather than awarding a single bursary.',
+    audience:'Grade 10–12 learners, school leavers, students and families comparing funding options.'
+  },
+  {
+    name:'Western Cape Government — Paying for further studies',
+    url:'https://www.westerncape.gov.za/education/matric-support-how-do-i-pay-further-studies',
+    provider:'Provincial guidance',
+    focus:'Explains bursaries, NSFAS, National Skills Fund and Funza Lushaka routes.',
+    coverage:'Guidance and links to programmes; the funding provider determines what is covered.',
+    audience:'Learners and families, especially those navigating post-matric study costs.'
+  },
+  {
+    name:'University of Pretoria — Funding directory',
+    url:'https://www.up.ac.za/funding',
+    provider:'University funding listings',
+    focus:'Searchable funding opportunities with filters such as status, study level, nationality and faculty.',
+    coverage:'Varies by sponsor and specific funding notice.',
+    audience:'Applicants and registered students who meet the eligibility rules of listed opportunities.'
+  }
+];
+
+
+// Guidance for Grades 10–12. These are exploration prompts, not admission guarantees.
+// Applicants must confirm current subject, mark, APS, portfolio and selection requirements with each institution.
+export const CAREER_PATHWAYS = [
+  {
+    name:'Engineering and the built environment',
+    fields:'engineering civil mechanical electrical chemical construction quantity surveying architecture',
+    subjects:'Mathematics and Physical Sciences are commonly important for engineering degrees; technical subjects and Engineering Graphics and Design may be useful for relevant routes.',
+    routes:'University degrees; university of technology diplomas; TVET programmes; artisan apprenticeships and learnerships.',
+    next:'Compare admission requirements for at least three institutions and check whether pure Mathematics is required.'
+  },
+  {
+    name:'Health, medicine and life sciences',
+    fields:'medicine nursing pharmacy dentistry physiotherapy biotechnology biology laboratory science',
+    subjects:'Life Sciences and Physical Sciences can be relevant; Mathematics requirements differ by qualification and institution.',
+    routes:'University degrees; nursing colleges and approved nursing programmes; TVET and occupational routes where available.',
+    next:'Check programme-specific subject and mark requirements, selection tests, clinical placement and professional registration.'
+  },
+  {
+    name:'Information technology and digital careers',
+    fields:'software development cybersecurity networking data analytics cloud support information systems',
+    subjects:'Mathematics is helpful for many technical pathways; Information Technology or Computer Applications Technology can build useful foundations where offered.',
+    routes:'University and university of technology programmes; TVET IT qualifications; vendor training; entry-level support and learnerships.',
+    next:'Build a small project portfolio and compare maths requirements for computing degrees versus certificates and occupational programmes.'
+  },
+  {
+    name:'Business, finance and entrepreneurship',
+    fields:'accounting finance banking economics auditing administration entrepreneurship supply chain',
+    subjects:'Mathematics and Accounting can be useful; Mathematical Literacy is accepted for some programmes but not all finance or accounting degrees.',
+    routes:'University degrees; diplomas; TVET business studies; workplace learnerships and accredited occupational qualifications.',
+    next:'Check whether the intended accounting or finance programme requires Mathematics, and compare professional-body pathways.'
+  },
+  {
+    name:'Education and teaching',
+    fields:'teacher early childhood education foundation phase intermediate phase senior phase languages mathematics science',
+    subjects:'Plan around the school subjects you may want to teach; language and subject-specific requirements vary by teaching phase and institution.',
+    routes:'Bachelor of Education; approved teaching degrees followed by a PGCE where applicable; eligible Funza Lushaka funding routes.',
+    next:'Check the university’s phase and subject specialisations and the current Funza Lushaka priority areas and conditions.'
+  },
+  {
+    name:'Law, public service and social sciences',
+    fields:'law public administration political science social work psychology sociology public policy',
+    subjects:'Strong reading, writing and critical-thinking skills are useful; subject prerequisites and selection rules vary substantially.',
+    routes:'University degrees; public-sector internships and graduate programmes; relevant diplomas and recognised professional pathways.',
+    next:'Check programme admission rules and any professional registration or postgraduate study required for the career.'
+  },
+  {
+    name:'Creative industries, media and design',
+    fields:'graphic design animation film journalism communication fashion music digital media user experience',
+    subjects:'Art, design, language and digital subjects may help where offered; some programmes require portfolios, auditions or practical assessments.',
+    routes:'University and university of technology programmes; accredited colleges; portfolio-based courses and entry-level production roles.',
+    next:'Start a portfolio with three to five original projects and confirm portfolio format, ownership and submission dates.'
+  },
+  {
+    name:'Trades, manufacturing and technical work',
+    fields:'electrician plumbing welding fitting turning automotive diesel mechanics renewable energy artisan',
+    subjects:'Mathematics, Physical Sciences and relevant technical subjects can help; entry requirements differ by trade and provider.',
+    routes:'TVET colleges; occupational certificates; apprenticeships; learnerships and artisan development programmes.',
+    next:'Check provider accreditation, workplace training requirements, trade-test route and whether tools or transport costs are covered.'
+  },
+  {
+    name:'Agriculture, environment and food systems',
+    fields:'agriculture agronomy animal science food science environmental science conservation forestry water management',
+    subjects:'Life Sciences, Geography, Agricultural Sciences and Mathematics/Physical Sciences can be relevant depending on the programme.',
+    routes:'Universities; agricultural colleges; TVET and occupational programmes; farm-based training and learnerships.',
+    next:'Compare practical placement requirements, location, field of study and bursary options with official institutions.'
+  }
+];

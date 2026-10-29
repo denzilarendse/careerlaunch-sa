@@ -4,7 +4,7 @@ import {
   SKILL_OPTIONS,
   OFO_SOURCE_NOTE
 } from './career-options.js';
-import { MAJOR_JOB_SITES, APPLICATION_FORMS } from './resource-catalog.js';
+import { MAJOR_JOB_SITES, APPLICATION_FORMS, LEARNING_RESOURCES, FUNDING_RESOURCES, CAREER_PATHWAYS } from './resource-catalog.js';
 
 const SESSION_KEY='careerlaunch_session';
 const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs';
@@ -2271,6 +2271,126 @@ function renderApplications(){
     list.append(card);
   });
 }
+
+
+function renderLearningResources(){
+  const list=document.querySelector('#learningResourceList');
+  const count=document.querySelector('#learningResourceCount');
+  if(!list||!count)return;
+  const query=(document.querySelector('#learningResourceSearch')?.value||'').trim().toLowerCase();
+  const filter=document.querySelector('#learningResourceFilter')?.value||'all';
+  const resources=LEARNING_RESOURCES.filter(resource=>{
+    const searchable=[resource.name,resource.category,resource.cost,resource.certificate,resource.recognition,resource.focus,resource.audience].join(' ').toLowerCase();
+    if(query&&!searchable.includes(query))return false;
+    if(filter==='free'&&!/free/i.test(resource.category+' '+resource.cost))return false;
+    if(filter==='paid'&&!/paid|subscription|extra|cost extra/i.test(resource.category+' '+resource.cost+' '+resource.certificate))return false;
+    return true;
+  });
+  clear(list);
+  count.textContent=`Showing ${resources.length} of ${LEARNING_RESOURCES.length} learning resources. Check official provider pages for current prices and certificate terms.`;
+  if(!resources.length){
+    list.append(make('p',{className:'empty-state',text:'No learning resources match your search. Try another keyword or choose all options.'}));
+    return;
+  }
+  resources.forEach(resource=>{
+    const card=make('article',{className:'learning-resource-card'});
+    card.append(
+      make('span',{className:'badge',text:resource.category}),
+      make('h4',{text:resource.name}),
+      make('p',{className:'learning-cost',text:resource.cost}),
+      make('p',{text:resource.focus}),
+      make('p',{className:'muted',text:`Best for: ${resource.audience}`}),
+      make('p',{text:`Certificate: ${resource.certificate}`}),
+      make('p',{text:`Recognition: ${resource.recognition}`})
+    );
+    const link=make('a',{className:'text-link',text:'View official course website',attrs:{href:resource.url,target:'_blank',rel:'noopener noreferrer'}});
+    card.append(link);
+    list.append(card);
+  });
+}
+
+function renderFundingResources(){
+  const list=document.querySelector('#fundingResourceList');
+  const count=document.querySelector('#fundingResourceCount');
+  if(!list||!count)return;
+  const query=(document.querySelector('#fundingResourceSearch')?.value||'').trim().toLowerCase();
+  const filter=document.querySelector('#fundingResourceFilter')?.value||'all';
+  const resources=FUNDING_RESOURCES.filter(resource=>{
+    const searchable=[resource.name,resource.provider,resource.focus,resource.coverage,resource.audience].join(' ').toLowerCase();
+    if(query&&!searchable.includes(query))return false;
+    const text=(resource.name+' '+resource.provider+' '+resource.focus).toLowerCase();
+    if(filter==='government'&&!/government|national student funding|national skills fund/i.test(text))return false;
+    if(filter==='stem'&&!/science|engineering|research|scarce skills|built environment/i.test(text))return false;
+    if(filter==='teaching'&&!/teaching|funza lushaka/i.test(text))return false;
+    if(filter==='university'&&!/university funding|university of pretoria/i.test(text))return false;
+    return true;
+  });
+  clear(list);
+  count.textContent=`Showing ${resources.length} of ${FUNDING_RESOURCES.length} official funding starting points. Availability and deadlines must be checked with each provider.`;
+  if(!resources.length){
+    list.append(make('p',{className:'empty-state',text:'No funding resources match your search. Try another keyword or choose all funding areas.'}));
+    return;
+  }
+  resources.forEach(resource=>{
+    const card=make('article',{className:'learning-resource-card'});
+    card.append(
+      make('span',{className:'badge',text:resource.provider}),
+      make('h4',{text:resource.name}),
+      make('p',{text:resource.focus}),
+      make('p',{text:`Coverage: ${resource.coverage}`}),
+      make('p',{className:'muted',text:`Who should check it: ${resource.audience}`})
+    );
+    card.append(make('a',{className:'text-link',text:'Check official funding page',attrs:{href:resource.url,target:'_blank',rel:'noopener noreferrer'}}));
+    list.append(card);
+  });
+}
+
+function renderCareerPathways(){
+  const list=document.querySelector('#careerPathwayList');
+  const count=document.querySelector('#careerPathwayCount');
+  if(!list||!count)return;
+  const query=(document.querySelector('#careerPathwaySearch')?.value||'').trim().toLowerCase();
+  const filter=document.querySelector('#careerPathwayFilter')?.value||'all';
+  const resources=CAREER_PATHWAYS.filter(pathway=>{
+    const searchable=[pathway.name,pathway.fields,pathway.subjects,pathway.routes,pathway.next].join(' ').toLowerCase();
+    if(query&&!searchable.includes(query))return false;
+    const text=(pathway.name+' '+pathway.fields).toLowerCase();
+    if(filter==='science'&&!/engineering|health|life science|information technology|digital|agriculture|environment|food system/i.test(text))return false;
+    if(filter==='business'&&!/business|finance|law|public service|social science/i.test(text))return false;
+    if(filter==='practical'&&!/trade|manufacturing|technical|agriculture|environment/i.test(text))return false;
+    if(filter==='creative'&&!/creative|media|design|film|journalism/i.test(text))return false;
+    return true;
+  });
+  clear(list);
+  count.textContent=`Showing ${resources.length} of ${CAREER_PATHWAYS.length} career families.`;
+  if(!resources.length){
+    list.append(make('p',{className:'empty-state',text:'No career pathways match your search. Try another keyword or select all career families.'}));
+    return;
+  }
+  resources.forEach(pathway=>{
+    const card=make('article',{className:'learning-resource-card'});
+    card.append(
+      make('h3',{text:pathway.name}),
+      make('p',{className:'muted',text:`Careers to explore: ${pathway.fields}`}),
+      make('p',{text:`Subject planning: ${pathway.subjects}`}),
+      make('p',{text:`Possible routes: ${pathway.routes}`}),
+      make('p',{text:`Your next step: ${pathway.next}`})
+    );
+    list.append(card);
+  });
+}
+
+document.querySelector('#careerPathwaySearch')?.addEventListener('input',renderCareerPathways);
+document.querySelector('#careerPathwayFilter')?.addEventListener('change',renderCareerPathways);
+renderCareerPathways();
+
+document.querySelector('#fundingResourceSearch')?.addEventListener('input',renderFundingResources);
+document.querySelector('#fundingResourceFilter')?.addEventListener('change',renderFundingResources);
+renderFundingResources();
+
+document.querySelector('#learningResourceSearch')?.addEventListener('input',renderLearningResources);
+document.querySelector('#learningResourceFilter')?.addEventListener('change',renderLearningResources);
+renderLearningResources();
 
 (async()=>{
   if(await ensureSession())await enterApp();

@@ -20,10 +20,11 @@ test('browser source contains no privileged secrets',async()=>{
   assert.equal(/SERVICE_ROLE|PRIVATE_KEY|ACCESS_TOKEN|API_SECRET|sb_secret_/i.test(js),false);
 });
 
-test('live-test signup remains email and password only',async()=>{
+test('signup copy respects email-confirmation security settings',async()=>{
   const html=await readFile(htmlUrl,'utf8');
   const js=await readFile(jsUrl,'utf8');
-  assert.ok(html.includes('No OTP or email confirmation is required.'));
+  assert.ok(html.includes('Depending on account security settings, you may need to confirm your email before signing in.'));
+  assert.ok(js.includes('Account created, but email confirmation is still required by the authentication service.'));
   assert.equal(/signInWithOtp|verifyOtp|magic.?link/i.test(js),false);
   assert.match(js,/authRequest\('signup',\{email:email\.value\.trim\(\),password:password\.value\}\)/);
   assert.match(js,/grant_type=password/);
@@ -248,4 +249,64 @@ test('generated application packages export complete components',async()=>{
   assert.ok(js.includes('buildApplicationPackageText'));
   assert.ok(js.includes('FORM COMPLETION WORKSHEET'));
   assert.ok(js.includes('MOTIVATIONAL LETTER'));
+});
+
+
+test('study and funding includes transparent searchable learning resources',async()=>{
+  const html=await readFile(htmlUrl,'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  const catalog=await readFile(new URL('../src/resource-catalog.js',import.meta.url),'utf8');
+  for(const id of ['learningResourceSearch','learningResourceFilter','learningResourceList','learningResourceCount']){
+    assert.ok(html.includes('id="'+id+'"'),id);
+  }
+  for(const name of ['OpenLearn — The Open University','Khan Academy','Microsoft Learn','Google Skillshop','Coursera','edX','Alison','Udemy','LinkedIn Learning']){
+    assert.ok(catalog.includes(name),name);
+  }
+  for(const phrase of ['Certificate:','Recognition:','View official course website','noopener noreferrer']){
+    assert.ok(js.includes(phrase),phrase);
+  }
+  assert.ok(js.includes('renderLearningResources'));
+  assert.ok(js.includes("addEventListener('input',renderLearningResources)"));
+});
+
+
+test('funding finder links to official sources and avoids false live-status claims',async()=>{
+  const html=await readFile(htmlUrl,'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  const catalog=await readFile(new URL('../src/resource-catalog.js',import.meta.url),'utf8');
+  for(const id of ['fundingResourceSearch','fundingResourceFilter','fundingResourceList','fundingResourceCount']){
+    assert.ok(html.includes('id="'+id+'"'),id);
+  }
+  for(const name of ['National Student Financial Aid Scheme (NSFAS)','Funza Lushaka Bursary','CSIR Bursaries','SANRAL External Bursary','National Skills Fund']){
+    assert.ok(catalog.includes(name),name);
+  }
+  assert.ok(html.includes('not a live open/closed feed'));
+  assert.ok(js.includes('renderFundingResources'));
+  assert.ok(js.includes("addEventListener('change',renderFundingResources)"));
+  assert.ok(js.includes('Check official funding page'));
+});
+
+
+test('public Grade 10–12 career explorer explains pathways without promising admission',async()=>{
+  const html=await readFile(htmlUrl,'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  const catalog=await readFile(new URL('../src/resource-catalog.js',import.meta.url),'utf8');
+  for(const id of ['careerPathwaySearch','careerPathwayFilter','careerPathwayList','careerPathwayCount']){
+    assert.ok(html.includes('id="'+id+'"'),id);
+  }
+  for(const name of ['Engineering and the built environment','Information technology and digital careers','Education and teaching','Trades, manufacturing and technical work']){
+    assert.ok(catalog.includes(name),name);
+  }
+  assert.ok(html.includes('not admission guarantees'));
+  assert.ok(js.includes('renderCareerPathways'));
+  assert.ok(js.includes("addEventListener('input',renderCareerPathways)"));
+});
+
+test('external AI spend is disabled unless explicitly opted in and assistant mode has a safe fallback',async()=>{
+  const edge=await readFile(edgeUrl,'utf8');
+  assert.ok(edge.includes('Deno.env.get("CAREERLAUNCH_AI_ENABLED") === "true"'));
+  assert.ok(edge.includes('ai_disabled_by_cost_guard'));
+  assert.ok(edge.includes('if (mode === "assistant") {'));
+  assert.ok(edge.includes('return json(assistantFallback(evidence as Record<string, unknown>));'));
+  assert.ok(edge.includes('External AI is disabled by the cost guard.'));
 });

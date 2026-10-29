@@ -54,13 +54,36 @@
         <p>Support for first CVs, entry-level work, learnerships, internships, bursaries, scholarships and study funding.</p>
       </section>
 
+      <section id="careerPathways" class="career-pathways" aria-labelledby="careerPathwaysTitle">
+        <p class="eyebrow">GRADES 10–12 CAREER EXPLORER</p>
+        <h2 id="careerPathwaysTitle">Choose subjects with your next step in mind.</h2>
+        <p>Explore broad career families, possible study routes and questions to ask before choosing subjects. These are planning prompts, not admission guarantees: requirements vary by qualification, institution and year.</p>
+        <div class="learning-controls">
+          <label for="careerPathwaySearch">Search careers or study routes</label>
+          <input id="careerPathwaySearch" type="search" placeholder="e.g. engineering, teaching, TVET, design">
+          <label for="careerPathwayFilter">Career family</label>
+          <select id="careerPathwayFilter">
+            <option value="all">All career families</option>
+            <option value="science">Science, technology and health</option>
+            <option value="business">Business and public service</option>
+            <option value="practical">Trades and practical careers</option>
+            <option value="creative">Creative careers</option>
+          </select>
+        </div>
+        <p id="careerPathwayCount" class="muted" aria-live="polite"></p>
+        <div id="careerPathwayList" class="learning-resource-grid"></div>
+        <div class="research-note">
+          <strong>Before finalising subject choices:</strong> check the current prospectus and admissions requirements of the institutions you may apply to, ask a school career adviser, and compare university, university of technology, TVET, apprenticeship and learnership routes.
+        </div>
+      </section>
+
       <section id="account">
         <p class="eyebrow">YOUR CAREERLAUNCH ACCOUNT</p>
         <h2>Join CareerLaunch or sign in.</h2>
         <div class="grid account-grid">
           <article>
             <h3>Create account</h3>
-            <p>Live testing mode: sign up with your email and password. No OTP or email confirmation is required.</p>
+            <p>Create your account with your email and password. Depending on account security settings, you may need to confirm your email before signing in.</p>
             <form id="signupForm" novalidate>
               <label for="signupEmail">Email address</label>
               <input id="signupEmail" type="email" autocomplete="email" required>
@@ -83,7 +106,7 @@
             </form>
           </article>
         </div>
-        <p class="test-note">Email confirmation is intentionally disabled for this controlled live-testing stage and must be restored before public production release.</p>
+        <p class="test-note">Account creation and sign-in require the configured authentication service to be active. Email confirmation depends on the provider settings and must be verified before public production release.</p>
       </section>
     </div>
 
@@ -563,6 +586,51 @@
           <button id="studyAiAssistantBtn" class="button button-secondary" type="button">Open AI funding / motivation-letter assistant</button>
         </div>
         <div id="studyList" class="opportunity-list" aria-live="polite">Loading funding opportunities…</div>
+
+        <section class="research-panel learning-directory" aria-labelledby="learningDirectoryTitle">
+          <div>
+            <p class="eyebrow">LEARN WITHOUT LOSING SIGHT OF COSTS</p>
+            <h3 id="learningDirectoryTitle">Online learning directory</h3>
+            <p class="muted">Compare free courses, paid learning and subscriptions. Certificate fees and accreditation are different from free course access, so check the provider’s official terms before enrolling.</p>
+          </div>
+          <div class="learning-controls">
+            <label for="learningResourceSearch">Search courses and skills</label>
+            <input id="learningResourceSearch" type="search" placeholder="e.g. cybersecurity, business, maths">
+            <label for="learningResourceFilter">Cost model</label>
+            <select id="learningResourceFilter">
+              <option value="all">All learning options</option>
+              <option value="free">Free learning available</option>
+              <option value="paid">Paid course or subscription options</option>
+            </select>
+          </div>
+          <p id="learningResourceCount" class="muted" aria-live="polite"></p>
+          <div id="learningResourceList" class="learning-resource-grid"></div>
+          <p class="muted">This is a curated starting directory, not a live price feed. Prices, certificate fees and course terms can change; the official provider page is the source of truth.</p>
+        </section>
+
+        <section class="research-panel funding-directory" aria-labelledby="fundingDirectoryTitle">
+          <div>
+            <p class="eyebrow">OFFICIAL FUNDING STARTING POINTS</p>
+            <h3 id="fundingDirectoryTitle">Bursaries, scholarships and student funding</h3>
+            <p class="muted">Start with official funders and university portals. This directory is not a live open/closed feed: check the latest closing date, eligibility, required documents and funding coverage on each provider’s website.</p>
+          </div>
+          <div class="learning-controls">
+            <label for="fundingResourceSearch">Search funding options</label>
+            <input id="fundingResourceSearch" type="search" placeholder="e.g. teaching, engineering, NSFAS">
+            <label for="fundingResourceFilter">Funding area</label>
+            <select id="fundingResourceFilter">
+              <option value="all">All funding starting points</option>
+              <option value="government">Government and general guidance</option>
+              <option value="stem">Science, engineering and scarce skills</option>
+              <option value="teaching">Teaching</option>
+              <option value="university">University funding</option>
+            </select>
+          </div>
+          <p id="fundingResourceCount" class="muted" aria-live="polite"></p>
+          <div id="fundingResourceList" class="learning-resource-grid"></div>
+          <p class="muted">Never pay an intermediary to submit an application unless an official provider explicitly requires a fee. Never share passwords or OTPs.</p>
+        </section>
+
         <section class="research-panel">
           <div>
             <p class="eyebrow">APPLICATION SAFETY</p>
