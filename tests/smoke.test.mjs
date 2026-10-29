@@ -301,3 +301,12 @@ test('public Grade 10–12 career explorer explains pathways without promising a
   assert.ok(js.includes('renderCareerPathways'));
   assert.ok(js.includes("addEventListener('input',renderCareerPathways)"));
 });
+
+test('external AI spend is disabled unless explicitly opted in and assistant mode has a safe fallback',async()=>{
+  const edge=await readFile(edgeUrl,'utf8');
+  assert.ok(edge.includes('Deno.env.get("CAREERLAUNCH_AI_ENABLED") === "true"'));
+  assert.ok(edge.includes('ai_disabled_by_cost_guard'));
+  assert.ok(edge.includes('if (mode === "assistant") {'));
+  assert.ok(edge.includes('return json(assistantFallback(evidence as Record<string, unknown>));'));
+  assert.ok(edge.includes('External AI is disabled by the cost guard.'));
+});
