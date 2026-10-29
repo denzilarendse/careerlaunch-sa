@@ -284,3 +284,19 @@ test('funding finder links to official sources and avoids false live-status clai
   assert.ok(js.includes("addEventListener('change',renderFundingResources)"));
   assert.ok(js.includes('Check official funding page'));
 });
+
+
+test('public Grade 10–12 career explorer explains pathways without promising admission',async()=>{
+  const html=await readFile(htmlUrl,'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  const catalog=await readFile(new URL('../src/resource-catalog.js',import.meta.url),'utf8');
+  for(const id of ['careerPathwaySearch','careerPathwayFilter','careerPathwayList','careerPathwayCount']){
+    assert.ok(html.includes('id="'+id+'"'),id);
+  }
+  for(const name of ['Engineering and the built environment','Information technology and digital careers','Education and teaching','Trades, manufacturing and technical work']){
+    assert.ok(catalog.includes(name),name);
+  }
+  assert.ok(html.includes('not admission guarantees'));
+  assert.ok(js.includes('renderCareerPathways'));
+  assert.ok(js.includes("addEventListener('input',renderCareerPathways)"));
+});
