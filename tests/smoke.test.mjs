@@ -20,10 +20,11 @@ test('browser source contains no privileged secrets',async()=>{
   assert.equal(/SERVICE_ROLE|PRIVATE_KEY|ACCESS_TOKEN|API_SECRET|sb_secret_/i.test(js),false);
 });
 
-test('live-test signup remains email and password only',async()=>{
+test('signup copy respects email-confirmation security settings',async()=>{
   const html=await readFile(htmlUrl,'utf8');
   const js=await readFile(jsUrl,'utf8');
-  assert.ok(html.includes('No OTP or email confirmation is required.'));
+  assert.ok(html.includes('Depending on account security settings, you may need to confirm your email before signing in.'));
+  assert.ok(js.includes('Account created, but email confirmation is still required by the authentication service.'));
   assert.equal(/signInWithOtp|verifyOtp|magic.?link/i.test(js),false);
   assert.match(js,/authRequest\('signup',\{email:email\.value\.trim\(\),password:password\.value\}\)/);
   assert.match(js,/grant_type=password/);
