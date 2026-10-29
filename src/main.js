@@ -4,7 +4,7 @@ import {
   SKILL_OPTIONS,
   OFO_SOURCE_NOTE
 } from './career-options.js';
-import { MAJOR_JOB_SITES, APPLICATION_FORMS, LEARNING_RESOURCES } from './resource-catalog.js';
+import { MAJOR_JOB_SITES, APPLICATION_FORMS, LEARNING_RESOURCES, FUNDING_RESOURCES } from './resource-catalog.js';
 
 const SESSION_KEY='careerlaunch_session';
 const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs';
@@ -2308,6 +2308,46 @@ function renderLearningResources(){
     list.append(card);
   });
 }
+
+function renderFundingResources(){
+  const list=document.querySelector('#fundingResourceList');
+  const count=document.querySelector('#fundingResourceCount');
+  if(!list||!count)return;
+  const query=(document.querySelector('#fundingResourceSearch')?.value||'').trim().toLowerCase();
+  const filter=document.querySelector('#fundingResourceFilter')?.value||'all';
+  const resources=FUNDING_RESOURCES.filter(resource=>{
+    const searchable=[resource.name,resource.provider,resource.focus,resource.coverage,resource.audience].join(' ').toLowerCase();
+    if(query&&!searchable.includes(query))return false;
+    const text=(resource.name+' '+resource.provider+' '+resource.focus).toLowerCase();
+    if(filter==='government'&&!/government|national student funding|national skills fund/i.test(text))return false;
+    if(filter==='stem'&&!/science|engineering|research|scarce skills|built environment/i.test(text))return false;
+    if(filter==='teaching'&&!/teaching|funza lushaka/i.test(text))return false;
+    if(filter==='university'&&!/university funding|university of pretoria/i.test(text))return false;
+    return true;
+  });
+  clear(list);
+  count.textContent=`Showing ${resources.length} of ${FUNDING_RESOURCES.length} official funding starting points. Availability and deadlines must be checked with each provider.`;
+  if(!resources.length){
+    list.append(make('p',{className:'empty-state',text:'No funding resources match your search. Try another keyword or choose all funding areas.'}));
+    return;
+  }
+  resources.forEach(resource=>{
+    const card=make('article',{className:'learning-resource-card'});
+    card.append(
+      make('span',{className:'badge',text:resource.provider}),
+      make('h4',{text:resource.name}),
+      make('p',{text:resource.focus}),
+      make('p',{text:`Coverage: ${resource.coverage}`}),
+      make('p',{className:'muted',text:`Who should check it: ${resource.audience}`})
+    );
+    card.append(make('a',{className:'text-link',text:'Check official funding page',attrs:{href:resource.url,target:'_blank',rel:'noopener noreferrer'}}));
+    list.append(card);
+  });
+}
+
+document.querySelector('#fundingResourceSearch')?.addEventListener('input',renderFundingResources);
+document.querySelector('#fundingResourceFilter')?.addEventListener('change',renderFundingResources);
+renderFundingResources();
 
 document.querySelector('#learningResourceSearch')?.addEventListener('input',renderLearningResources);
 document.querySelector('#learningResourceFilter')?.addEventListener('change',renderLearningResources);
