@@ -468,12 +468,21 @@ Deno.serve(async (req: Request) => {
   const apiUrl = Deno.env.get("CAREERLAUNCH_AI_API_URL") ?? "https://api.openai.com/v1/responses";
   const apiKey = Deno.env.get("CAREERLAUNCH_AI_API_KEY");
   const model = Deno.env.get("CAREERLAUNCH_AI_MODEL") ?? "gpt-6-luna";
+  // External AI is opt-in so a configured provider key cannot create spend by default.
+  // Enable it only after an explicit budget, usage cap and billing owner have been agreed.
+  const aiEnabled = Deno.env.get("CAREERLAUNCH_AI_ENABLED") === "true";
 
-  if (!apiKey) {
-    console.log(JSON.stringify({event:"careerlaunch_generate_cv",mode:"structured_fallback",reason:"missing_provider_key"}));
+  if (!apiKey || !aiEnabled) {
+    const reason = !apiKey ? "missing_provider_key" : "ai_disabled_by_cost_guard";
+    console.log(JSON.stringify({event:"careerlaunch_generate_cv",mode:"structured_fallback",reason}));
+    if (mode === "assistant") {
+      return json(assistantFallback(evidence as Record<string, unknown>));
+    }
     return json(buildStructuredFallback(
       evidence as Record<string, unknown>,
-      "The external AI provider key is not configured, so CareerLaunch generated a structured evidence-only draft instead."
+      !apiKey
+        ? "The external AI provider key is not configured, so CareerLaunch generated a structured evidence-only draft instead."
+        : "External AI is disabled by the cost guard. CareerLaunch generated a structured evidence-only draft instead."
     ));
   }
 
