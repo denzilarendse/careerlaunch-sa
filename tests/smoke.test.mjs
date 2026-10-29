@@ -249,3 +249,21 @@ test('generated application packages export complete components',async()=>{
   assert.ok(js.includes('FORM COMPLETION WORKSHEET'));
   assert.ok(js.includes('MOTIVATIONAL LETTER'));
 });
+
+
+test('study and funding includes transparent searchable learning resources',async()=>{
+  const html=await readFile(htmlUrl,'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  const catalog=await readFile(new URL('../src/resource-catalog.js',import.meta.url),'utf8');
+  for(const id of ['learningResourceSearch','learningResourceFilter','learningResourceList','learningResourceCount']){
+    assert.ok(html.includes('id="'+id+'"'),id);
+  }
+  for(const name of ['OpenLearn — The Open University','Khan Academy','Microsoft Learn','Google Skillshop','Coursera','edX','Alison','Udemy','LinkedIn Learning']){
+    assert.ok(catalog.includes(name),name);
+  }
+  for(const phrase of ['Certificate:','Recognition:','View official course website','noopener noreferrer']){
+    assert.ok(js.includes(phrase),phrase);
+  }
+  assert.ok(js.includes('renderLearningResources'));
+  assert.ok(js.includes("addEventListener('input',renderLearningResources)"));
+});
