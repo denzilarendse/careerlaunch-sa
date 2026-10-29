@@ -4,7 +4,7 @@ import {
   SKILL_OPTIONS,
   OFO_SOURCE_NOTE
 } from './career-options.js';
-import { MAJOR_JOB_SITES, APPLICATION_FORMS, LEARNING_RESOURCES, FUNDING_RESOURCES } from './resource-catalog.js';
+import { MAJOR_JOB_SITES, APPLICATION_FORMS, LEARNING_RESOURCES, FUNDING_RESOURCES, CAREER_PATHWAYS } from './resource-catalog.js';
 
 const SESSION_KEY='careerlaunch_session';
 const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs';
@@ -2344,6 +2344,45 @@ function renderFundingResources(){
     list.append(card);
   });
 }
+
+function renderCareerPathways(){
+  const list=document.querySelector('#careerPathwayList');
+  const count=document.querySelector('#careerPathwayCount');
+  if(!list||!count)return;
+  const query=(document.querySelector('#careerPathwaySearch')?.value||'').trim().toLowerCase();
+  const filter=document.querySelector('#careerPathwayFilter')?.value||'all';
+  const resources=CAREER_PATHWAYS.filter(pathway=>{
+    const searchable=[pathway.name,pathway.fields,pathway.subjects,pathway.routes,pathway.next].join(' ').toLowerCase();
+    if(query&&!searchable.includes(query))return false;
+    const text=(pathway.name+' '+pathway.fields).toLowerCase();
+    if(filter==='science'&&!/engineering|health|life science|information technology|digital|agriculture|environment|food system/i.test(text))return false;
+    if(filter==='business'&&!/business|finance|law|public service|social science/i.test(text))return false;
+    if(filter==='practical'&&!/trade|manufacturing|technical|agriculture|environment/i.test(text))return false;
+    if(filter==='creative'&&!/creative|media|design|film|journalism/i.test(text))return false;
+    return true;
+  });
+  clear(list);
+  count.textContent=`Showing ${resources.length} of ${CAREER_PATHWAYS.length} career families.`;
+  if(!resources.length){
+    list.append(make('p',{className:'empty-state',text:'No career pathways match your search. Try another keyword or select all career families.'}));
+    return;
+  }
+  resources.forEach(pathway=>{
+    const card=make('article',{className:'learning-resource-card'});
+    card.append(
+      make('h3',{text:pathway.name}),
+      make('p',{className:'muted',text:`Careers to explore: ${pathway.fields}`}),
+      make('p',{text:`Subject planning: ${pathway.subjects}`}),
+      make('p',{text:`Possible routes: ${pathway.routes}`}),
+      make('p',{text:`Your next step: ${pathway.next}`})
+    );
+    list.append(card);
+  });
+}
+
+document.querySelector('#careerPathwaySearch')?.addEventListener('input',renderCareerPathways);
+document.querySelector('#careerPathwayFilter')?.addEventListener('change',renderCareerPathways);
+renderCareerPathways();
 
 document.querySelector('#fundingResourceSearch')?.addEventListener('input',renderFundingResources);
 document.querySelector('#fundingResourceFilter')?.addEventListener('change',renderFundingResources);
