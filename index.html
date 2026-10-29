@@ -584,6 +584,30 @@
           <div id="learningResourceList" class="learning-resource-grid"></div>
           <p class="muted">This is a curated starting directory, not a live price feed. Prices, certificate fees and course terms can change; the official provider page is the source of truth.</p>
         </section>
+
+        <section class="research-panel funding-directory" aria-labelledby="fundingDirectoryTitle">
+          <div>
+            <p class="eyebrow">OFFICIAL FUNDING STARTING POINTS</p>
+            <h3 id="fundingDirectoryTitle">Bursaries, scholarships and student funding</h3>
+            <p class="muted">Start with official funders and university portals. This directory is not a live open/closed feed: check the latest closing date, eligibility, required documents and funding coverage on each provider’s website.</p>
+          </div>
+          <div class="learning-controls">
+            <label for="fundingResourceSearch">Search funding options</label>
+            <input id="fundingResourceSearch" type="search" placeholder="e.g. teaching, engineering, NSFAS">
+            <label for="fundingResourceFilter">Funding area</label>
+            <select id="fundingResourceFilter">
+              <option value="all">All funding starting points</option>
+              <option value="government">Government and general guidance</option>
+              <option value="stem">Science, engineering and scarce skills</option>
+              <option value="teaching">Teaching</option>
+              <option value="university">University funding</option>
+            </select>
+          </div>
+          <p id="fundingResourceCount" class="muted" aria-live="polite"></p>
+          <div id="fundingResourceList" class="learning-resource-grid"></div>
+          <p class="muted">Never pay an intermediary to submit an application unless an official provider explicitly requires a fee. Never share passwords or OTPs.</p>
+        </section>
+
         <section class="research-panel">
           <div>
             <p class="eyebrow">APPLICATION SAFETY</p>
