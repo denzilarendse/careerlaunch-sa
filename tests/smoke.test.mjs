@@ -267,3 +267,20 @@ test('study and funding includes transparent searchable learning resources',asyn
   assert.ok(js.includes('renderLearningResources'));
   assert.ok(js.includes("addEventListener('input',renderLearningResources)"));
 });
+
+
+test('funding finder links to official sources and avoids false live-status claims',async()=>{
+  const html=await readFile(htmlUrl,'utf8');
+  const js=await readFile(jsUrl,'utf8');
+  const catalog=await readFile(new URL('../src/resource-catalog.js',import.meta.url),'utf8');
+  for(const id of ['fundingResourceSearch','fundingResourceFilter','fundingResourceList','fundingResourceCount']){
+    assert.ok(html.includes('id="'+id+'"'),id);
+  }
+  for(const name of ['National Student Financial Aid Scheme (NSFAS)','Funza Lushaka Bursary','CSIR Bursaries','SANRAL External Bursary','National Skills Fund']){
+    assert.ok(catalog.includes(name),name);
+  }
+  assert.ok(html.includes('not a live open/closed feed'));
+  assert.ok(js.includes('renderFundingResources'));
+  assert.ok(js.includes("addEventListener('change',renderFundingResources)"));
+  assert.ok(js.includes('Check official funding page'));
+});
