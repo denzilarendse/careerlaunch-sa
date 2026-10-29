@@ -289,3 +289,72 @@ export const FUNDING_RESOURCES = [
     audience:'Applicants and registered students who meet the eligibility rules of listed opportunities.'
   }
 ];
+
+
+// Guidance for Grades 10–12. These are exploration prompts, not admission guarantees.
+// Applicants must confirm current subject, mark, APS, portfolio and selection requirements with each institution.
+export const CAREER_PATHWAYS = [
+  {
+    name:'Engineering and the built environment',
+    fields:'engineering civil mechanical electrical chemical construction quantity surveying architecture',
+    subjects:'Mathematics and Physical Sciences are commonly important for engineering degrees; technical subjects and Engineering Graphics and Design may be useful for relevant routes.',
+    routes:'University degrees; university of technology diplomas; TVET programmes; artisan apprenticeships and learnerships.',
+    next:'Compare admission requirements for at least three institutions and check whether pure Mathematics is required.'
+  },
+  {
+    name:'Health, medicine and life sciences',
+    fields:'medicine nursing pharmacy dentistry physiotherapy biotechnology biology laboratory science',
+    subjects:'Life Sciences and Physical Sciences can be relevant; Mathematics requirements differ by qualification and institution.',
+    routes:'University degrees; nursing colleges and approved nursing programmes; TVET and occupational routes where available.',
+    next:'Check programme-specific subject and mark requirements, selection tests, clinical placement and professional registration.'
+  },
+  {
+    name:'Information technology and digital careers',
+    fields:'software development cybersecurity networking data analytics cloud support information systems',
+    subjects:'Mathematics is helpful for many technical pathways; Information Technology or Computer Applications Technology can build useful foundations where offered.',
+    routes:'University and university of technology programmes; TVET IT qualifications; vendor training; entry-level support and learnerships.',
+    next:'Build a small project portfolio and compare maths requirements for computing degrees versus certificates and occupational programmes.'
+  },
+  {
+    name:'Business, finance and entrepreneurship',
+    fields:'accounting finance banking economics auditing administration entrepreneurship supply chain',
+    subjects:'Mathematics and Accounting can be useful; Mathematical Literacy is accepted for some programmes but not all finance or accounting degrees.',
+    routes:'University degrees; diplomas; TVET business studies; workplace learnerships and accredited occupational qualifications.',
+    next:'Check whether the intended accounting or finance programme requires Mathematics, and compare professional-body pathways.'
+  },
+  {
+    name:'Education and teaching',
+    fields:'teacher early childhood education foundation phase intermediate phase senior phase languages mathematics science',
+    subjects:'Plan around the school subjects you may want to teach; language and subject-specific requirements vary by teaching phase and institution.',
+    routes:'Bachelor of Education; approved teaching degrees followed by a PGCE where applicable; eligible Funza Lushaka funding routes.',
+    next:'Check the university’s phase and subject specialisations and the current Funza Lushaka priority areas and conditions.'
+  },
+  {
+    name:'Law, public service and social sciences',
+    fields:'law public administration political science social work psychology sociology public policy',
+    subjects:'Strong reading, writing and critical-thinking skills are useful; subject prerequisites and selection rules vary substantially.',
+    routes:'University degrees; public-sector internships and graduate programmes; relevant diplomas and recognised professional pathways.',
+    next:'Check programme admission rules and any professional registration or postgraduate study required for the career.'
+  },
+  {
+    name:'Creative industries, media and design',
+    fields:'graphic design animation film journalism communication fashion music digital media user experience',
+    subjects:'Art, design, language and digital subjects may help where offered; some programmes require portfolios, auditions or practical assessments.',
+    routes:'University and university of technology programmes; accredited colleges; portfolio-based courses and entry-level production roles.',
+    next:'Start a portfolio with three to five original projects and confirm portfolio format, ownership and submission dates.'
+  },
+  {
+    name:'Trades, manufacturing and technical work',
+    fields:'electrician plumbing welding fitting turning automotive diesel mechanics renewable energy artisan',
+    subjects:'Mathematics, Physical Sciences and relevant technical subjects can help; entry requirements differ by trade and provider.',
+    routes:'TVET colleges; occupational certificates; apprenticeships; learnerships and artisan development programmes.',
+    next:'Check provider accreditation, workplace training requirements, trade-test route and whether tools or transport costs are covered.'
+  },
+  {
+    name:'Agriculture, environment and food systems',
+    fields:'agriculture agronomy animal science food science environmental science conservation forestry water management',
+    subjects:'Life Sciences, Geography, Agricultural Sciences and Mathematics/Physical Sciences can be relevant depending on the programme.',
+    routes:'Universities; agricultural colleges; TVET and occupational programmes; farm-based training and learnerships.',
+    next:'Compare practical placement requirements, location, field of study and bursary options with official institutions.'
+  }
+];
