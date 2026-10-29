@@ -4,7 +4,7 @@ import {
   SKILL_OPTIONS,
   OFO_SOURCE_NOTE
 } from './career-options.js';
-import { MAJOR_JOB_SITES, APPLICATION_FORMS } from './resource-catalog.js';
+import { MAJOR_JOB_SITES, APPLICATION_FORMS, LEARNING_RESOURCES } from './resource-catalog.js';
 
 const SESSION_KEY='careerlaunch_session';
 const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs';
@@ -2271,6 +2271,47 @@ function renderApplications(){
     list.append(card);
   });
 }
+
+
+function renderLearningResources(){
+  const list=document.querySelector('#learningResourceList');
+  const count=document.querySelector('#learningResourceCount');
+  if(!list||!count)return;
+  const query=(document.querySelector('#learningResourceSearch')?.value||'').trim().toLowerCase();
+  const filter=document.querySelector('#learningResourceFilter')?.value||'all';
+  const resources=LEARNING_RESOURCES.filter(resource=>{
+    const searchable=[resource.name,resource.category,resource.cost,resource.certificate,resource.recognition,resource.focus,resource.audience].join(' ').toLowerCase();
+    if(query&&!searchable.includes(query))return false;
+    if(filter==='free'&&!/free/i.test(resource.category+' '+resource.cost))return false;
+    if(filter==='paid'&&!/paid|subscription|extra|cost extra/i.test(resource.category+' '+resource.cost+' '+resource.certificate))return false;
+    return true;
+  });
+  clear(list);
+  count.textContent=`Showing ${resources.length} of ${LEARNING_RESOURCES.length} learning resources. Check official provider pages for current prices and certificate terms.`;
+  if(!resources.length){
+    list.append(make('p',{className:'empty-state',text:'No learning resources match your search. Try another keyword or choose all options.'}));
+    return;
+  }
+  resources.forEach(resource=>{
+    const card=make('article',{className:'learning-resource-card'});
+    card.append(
+      make('span',{className:'badge',text:resource.category}),
+      make('h4',{text:resource.name}),
+      make('p',{className:'learning-cost',text:resource.cost}),
+      make('p',{text:resource.focus}),
+      make('p',{className:'muted',text:`Best for: ${resource.audience}`}),
+      make('p',{text:`Certificate: ${resource.certificate}`}),
+      make('p',{text:`Recognition: ${resource.recognition}`})
+    );
+    const link=make('a',{className:'text-link',text:'View official course website',attrs:{href:resource.url,target:'_blank',rel:'noopener noreferrer'}});
+    card.append(link);
+    list.append(card);
+  });
+}
+
+document.querySelector('#learningResourceSearch')?.addEventListener('input',renderLearningResources);
+document.querySelector('#learningResourceFilter')?.addEventListener('change',renderLearningResources);
+renderLearningResources();
 
 (async()=>{
   if(await ensureSession())await enterApp();
