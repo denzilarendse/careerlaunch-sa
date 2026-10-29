@@ -563,6 +563,27 @@
           <button id="studyAiAssistantBtn" class="button button-secondary" type="button">Open AI funding / motivation-letter assistant</button>
         </div>
         <div id="studyList" class="opportunity-list" aria-live="polite">Loading funding opportunities…</div>
+
+        <section class="research-panel learning-directory" aria-labelledby="learningDirectoryTitle">
+          <div>
+            <p class="eyebrow">LEARN WITHOUT LOSING SIGHT OF COSTS</p>
+            <h3 id="learningDirectoryTitle">Online learning directory</h3>
+            <p class="muted">Compare free courses, paid learning and subscriptions. Certificate fees and accreditation are different from free course access, so check the provider’s official terms before enrolling.</p>
+          </div>
+          <div class="learning-controls">
+            <label for="learningResourceSearch">Search courses and skills</label>
+            <input id="learningResourceSearch" type="search" placeholder="e.g. cybersecurity, business, maths">
+            <label for="learningResourceFilter">Cost model</label>
+            <select id="learningResourceFilter">
+              <option value="all">All learning options</option>
+              <option value="free">Free learning available</option>
+              <option value="paid">Paid course or subscription options</option>
+            </select>
+          </div>
+          <p id="learningResourceCount" class="muted" aria-live="polite"></p>
+          <div id="learningResourceList" class="learning-resource-grid"></div>
+          <p class="muted">This is a curated starting directory, not a live price feed. Prices, certificate fees and course terms can change; the official provider page is the source of truth.</p>
+        </section>
         <section class="research-panel">
           <div>
             <p class="eyebrow">APPLICATION SAFETY</p>
