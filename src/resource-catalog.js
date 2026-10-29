@@ -219,3 +219,73 @@ export const LEARNING_RESOURCES = [
     rank:12
   }
 ];
+
+
+// Official funding portals, not a claim that every programme is currently open.
+// Always re-check the deadline, field, academic threshold and required documents on the provider page.
+export const FUNDING_RESOURCES = [
+  {
+    name:'National Student Financial Aid Scheme (NSFAS)',
+    url:'https://www.nsfas.org.za/',
+    provider:'National student funding',
+    focus:'Eligible students at public universities and TVET colleges, subject to the current funding rules.',
+    coverage:'Funding and allowances depend on the applicable rules and individual eligibility.',
+    audience:'South African students who need financial assistance for eligible study programmes.'
+  },
+  {
+    name:'Funza Lushaka Bursary',
+    url:'https://www.funzalushaka.doe.gov.za/Home/',
+    provider:'Teaching bursary',
+    focus:'Teaching qualifications in priority subject areas.',
+    coverage:'Official guidance describes support for tuition and other eligible study/living costs; confirm the current terms.',
+    audience:'Eligible learners and students committed to qualifying teaching pathways.'
+  },
+  {
+    name:'CSIR Bursaries',
+    url:'https://www.csir.co.za/careers/students-graduates/bursaries',
+    provider:'Science, engineering and research',
+    focus:'Advertised undergraduate and postgraduate programmes in priority science, engineering and technology fields.',
+    coverage:'Programme-specific support may include tuition, accommodation, allowances, mentorship and vacation work.',
+    audience:'Academically qualifying students intending to study at a South African public university.'
+  },
+  {
+    name:'SANRAL External Bursary',
+    url:'https://www.nra.co.za/bursaries',
+    provider:'Engineering, technology and built environment',
+    focus:'Approved fields can include civil engineering, computer science, information systems and selected supply-chain fields.',
+    coverage:'Check the current advert for covered costs, eligibility and return-of-service conditions.',
+    audience:'Students whose intended qualification and results meet the advertised criteria.'
+  },
+  {
+    name:'National Skills Fund',
+    url:'https://nsf.org.za/bursaries-and-scholarships/',
+    provider:'Scarce and critical skills',
+    focus:'Undergraduate and postgraduate bursaries, including scarce-skills and international scholarship information.',
+    coverage:'The fund describes support that can include tuition, books, accommodation, meals and transport; terms depend on the programme.',
+    audience:'Students in eligible qualifications and programmes advertised by the fund or its implementing partners.'
+  },
+  {
+    name:'South African Government — Where to find bursary funding',
+    url:'https://www.gov.za/faq/education/where-can-i-get-bursaryfunds-further-studies',
+    provider:'Government guidance',
+    focus:'Starting point for government bursaries, NSFAS, university funding and other further-study support.',
+    coverage:'Explains funding routes rather than awarding a single bursary.',
+    audience:'Grade 10–12 learners, school leavers, students and families comparing funding options.'
+  },
+  {
+    name:'Western Cape Government — Paying for further studies',
+    url:'https://www.westerncape.gov.za/education/matric-support-how-do-i-pay-further-studies',
+    provider:'Provincial guidance',
+    focus:'Explains bursaries, NSFAS, National Skills Fund and Funza Lushaka routes.',
+    coverage:'Guidance and links to programmes; the funding provider determines what is covered.',
+    audience:'Learners and families, especially those navigating post-matric study costs.'
+  },
+  {
+    name:'University of Pretoria — Funding directory',
+    url:'https://www.up.ac.za/funding',
+    provider:'University funding listings',
+    focus:'Searchable funding opportunities with filters such as status, study level, nationality and faculty.',
+    coverage:'Varies by sponsor and specific funding notice.',
+    audience:'Applicants and registered students who meet the eligibility rules of listed opportunities.'
+  }
+];
