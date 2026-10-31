@@ -1,0 +1,13 @@
+GitHub Actions CI failure evidence — 2026-10-31
+Repository: denzilarendse/careerlaunch-sa
+Run: 41197529814 (run number 112)
+Commit: 469cc128481fa1171c07f642aa1636df1ebd567e
+Job: verify
+Result: npm install PASS; npm run check PASS; npm test FAIL; build and artifact upload skipped.
+
+Failing test:
+tests/smoke.test.mjs — "conversation mode and vacancy reader are server-side protected"
+Assertion: assert.ok(edge.includes('blockedHostname'))
+Reason: the SSRF predicate had been extracted into ssrf-guard.mjs, but the older smoke test still expected the function name inside index.ts.
+
+This was a stale test assertion, not an observed exploit. It was corrected to assert the production import/use of validateVacancyUrl/readLimitedText and verify the helper includes the blockedHostname and UNSAFE_VACANCY_URL guard. The next CI run (41197582407, run 114) passed check, all tests, build, release-identity validation, and artifact upload.
