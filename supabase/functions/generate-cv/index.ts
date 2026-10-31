@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
+import { validateVacancyUrl, readLimitedText } from "./ssrf-guard.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -243,18 +244,6 @@ function normalizeConversation(value: unknown) {
   }).filter((item) => item.content);
 }
 
-function blockedHostname(hostname: string) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (!host || host === "localhost" || host.endsWith(".local")) return true;
-  if (host === "::1" || host === "0.0.0.0") return true;
-  if (/^127\./.test(host) || /^10\./.test(host) || /^169\.254\./.test(host)) return true;
-  if (/^192\.168\./.test(host)) return true;
-  const match = host.match(/^172\.(\d{1,3})\./);
-  if (match && Number(match[1]) >= 16 && Number(match[1]) <= 31) return true;
-  if (/^(fc|fd|fe8|fe9|fea|feb)/i.test(host.replaceAll(":", ""))) return true;
-  return false;
-}
-
 function stripHtml(html: string) {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -272,11 +261,9 @@ function stripHtml(html: string) {
 }
 
 async function fetchVacancyPage(rawUrl: string) {
-  let current = new URL(rawUrl);
+  let current = validateVacancyUrl(rawUrl);
   for (let redirect = 0; redirect < 4; redirect++) {
-    if (!["https:", "http:"].includes(current.protocol) || blockedHostname(current.hostname)) {
-      throw new Error("UNSAFE_VACANCY_URL");
-    }
+    current = validateVacancyUrl(current.toString());
     const response = await fetch(current.toString(), {
       redirect: "manual",
       signal: AbortSignal.timeout(12000),
@@ -285,7 +272,7 @@ async function fetchVacancyPage(rawUrl: string) {
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location) throw new Error("VACANCY_REDIRECT_INVALID");
-      current = new URL(location, current);
+      current = validateVacancyUrl(new URL(location, current).toString());
       continue;
     }
     if (!response.ok) throw new Error(`VACANCY_FETCH_${response.status}`);
@@ -295,7 +282,7 @@ async function fetchVacancyPage(rawUrl: string) {
     if (!contentType.includes("text/html") && !contentType.includes("text/plain")) {
       throw new Error("VACANCY_CONTENT_UNSUPPORTED");
     }
-    const raw = (await response.text()).slice(0, 1_500_000);
+    const raw = await readLimitedText(response, 1_500_000);
     const text = contentType.includes("html") ? stripHtml(raw) : raw.replace(/\s+/g, " ").trim();
     return {
       source_url: current.toString(),
