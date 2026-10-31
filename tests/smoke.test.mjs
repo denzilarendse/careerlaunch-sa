@@ -219,8 +219,11 @@ test('conversation mode and vacancy reader are server-side protected',async()=>{
   const edge=await readFile(edgeUrl,'utf8');
   assert.ok(edge.includes('mode === "assistant"'));
   assert.ok(edge.includes('mode === "fetch_vacancy"'));
-  assert.ok(edge.includes('blockedHostname'));
-  assert.ok(edge.includes('UNSAFE_VACANCY_URL'));
+  assert.ok(edge.includes('validateVacancyUrl'));
+  assert.ok(edge.includes('readLimitedText'));
+  const guard=await readFile(new URL('../supabase/functions/generate-cv/ssrf-guard.mjs', import.meta.url),'utf8');
+  assert.ok(guard.includes('blockedHostname'));
+  assert.ok(guard.includes('UNSAFE_VACANCY_URL'));
   assert.ok(edge.includes('motivation_letter_markdown'));
   assert.ok(edge.includes('form_completion_markdown'));
   assert.ok(edge.includes('gpt-6-luna'));
