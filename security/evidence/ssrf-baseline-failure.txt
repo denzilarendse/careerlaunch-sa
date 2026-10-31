@@ -1,0 +1,24 @@
+Baseline failure evidence — 2026-10-31
+Environment: Node.js v22.16.0, local synthetic harness; no network requests made.
+Command: node --test baseline-failure.test.mjs
+Exit code: 1
+
+TAP version 13
+# Subtest: baseline: IPv4-mapped IPv6 loopback should be blocked
+not ok 1 - baseline: IPv4-mapped IPv6 loopback should be blocked
+  ---
+  error: |-
+    Expected values to be strictly equal:
+    false !== true
+  code: ERR_ASSERTION
+  expected: true
+  actual: false
+# Subtest: baseline: numeric IPv4 alternate notation should be blocked
+ok 2 - baseline: numeric IPv4 alternate notation should be blocked
+1..2
+# tests 2
+# pass 1
+# fail 1
+baseline_exit_code=1
+
+Interpretation: the original hostname predicate returned false for URL.hostname from http://[::ffff:127.0.0.1], so the IPv4-mapped loopback was not blocked. The numeric IPv4 alternate-notation case was normalized by URL and happened to be blocked. This is a local regression reproducer only; no target or internal service was contacted.
